@@ -1,197 +1,147 @@
-const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
-const validator = require('validator');
-
-// Generate JWT Token
-const generateToken = (id, role) => {
-  return jwt.sign(
-    { id, role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
-  );
-};
+const Admin = require('../models/Admin');
 
 const authController = {
-  // Admin login
+  // Login
   login: async (req, res) => {
     try {
-      const { email, password } = req.body;
-
+      const { username, password } = req.body;
+      
       // Validation
-      if (!email || !password) {
+      if (!username || !password) {
         return res.status(400).json({
           success: false,
-          error: 'Please provide email and password'
+          message: 'Username and password are required'
         });
       }
-
-      if (!validator.isEmail(email)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Please provide a valid email'
-        });
-      }
-
-      // Find admin by email
-      const admin = await Admin.findOne({ email }).select('+password');
       
-      if (!admin) {
+      // Find user
+      const user = await Admin.findByUsername(username);
+      
+      if (!user) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials'
+          message: 'Invalid credentials'
         });
       }
-
-      // Check if admin is active
-      if (!admin.isActive) {
-        return res.status(401).json({
-          success: false,
-          error: 'Account is deactivated. Please contact administrator.'
-        });
-      }
-
+      
       // Check password
-      const isPasswordMatch = await admin.comparePassword(password);
+      const isPasswordValid = await Admin.comparePassword(password, user.password);
       
-      if (!isPasswordMatch) {
+      if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials'
+          message: 'Invalid credentials'
         });
       }
-
-      // Update last login
-      await admin.updateLastLogin();
-
-      // Generate token
-      const token = generateToken(admin._id, admin.role);
-
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { 
+          id: user.id, 
+          username: user.username, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'default_secret',
+        { expiresIn: '24h' }
+      );
+      
       // Remove password from response
-      const adminData = admin.toJSON();
-
+      const { password: _, ...userWithoutPassword } = user;
+      
       res.json({
         success: true,
         message: 'Login successful',
         token,
-        user: adminData
+        user: userWithoutPassword
       });
-
+      
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({
         success: false,
-        error: 'Server error during login'
+        message: 'Server error',
+        error: error.message
       });
     }
   },
 
-  // Register new admin (protected - superadmin only)
+  // Register
   register: async (req, res) => {
     try {
-      const { username, email, password, role } = req.body;
-
+      const { username, password, role } = req.body;
+      
       // Validation
-      if (!username || !email || !password) {
+      if (!username || !password) {
         return res.status(400).json({
           success: false,
-          error: 'Please provide username, email, and password'
+          message: 'Username and password are required'
         });
       }
-
-      if (!validator.isEmail(email)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Please provide a valid email'
-        });
-      }
-
+      
       if (password.length < 6) {
         return res.status(400).json({
           success: false,
-          error: 'Password must be at least 6 characters'
+          message: 'Password must be at least 6 characters'
         });
       }
-
-      // Check if admin already exists
-      const existingAdmin = await Admin.findOne({
-        $or: [{ email }, { username }]
-      });
-
-      if (existingAdmin) {
-        return res.status(400).json({
-          success: false,
-          error: 'Admin with this email or username already exists'
-        });
-      }
-
-      // Create new admin
-      const admin = await Admin.create({
+      
+      // Create new user
+      const newUser = await Admin.create({
         username,
-        email,
         password,
-        role: role || 'admin'
+        role: role || 'user'
       });
-
-      // Generate token
-      const token = generateToken(admin._id, admin.role);
-
+      
       res.status(201).json({
         success: true,
-        message: 'Admin created successfully',
-        token,
-        user: admin
+        message: 'User registered successfully',
+        data: newUser
       });
-
+      
     } catch (error) {
       console.error('Register error:', error);
-      
-      if (error.name === 'ValidationError') {
-        const errors = Object.values(error.errors).map(err => err.message);
-        return res.status(400).json({
-          success: false,
-          error: errors.join(', ')
-        });
-      }
-
       res.status(500).json({
         success: false,
-        error: 'Server error during registration'
+        message: 'Server error',
+        error: error.message
       });
     }
   },
 
-  // Get current admin info
-  getCurrentAdmin: async (req, res) => {
+  // Get profile
+  getProfile: async (req, res) => {
     try {
-      const admin = await Admin.findById(req.user.id);
+      // This requires authentication middleware
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+      }
       
-      if (!admin) {
+      const user = await Admin.findById(req.user.id);
+      
+      if (!user) {
         return res.status(404).json({
           success: false,
-          error: 'Admin not found'
+          message: 'User not found'
         });
       }
-
+      
       res.json({
         success: true,
-        data: admin
+        data: user
       });
-
+      
     } catch (error) {
-      console.error('Get current admin error:', error);
+      console.error('Get profile error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get admin information'
+        message: 'Server error',
+        error: error.message
       });
     }
-  },
-
-  // Logout (client-side token removal)
-  logout: (req, res) => {
-    res.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
   }
 };
 

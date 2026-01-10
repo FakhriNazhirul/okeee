@@ -1,85 +1,120 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
+const DB = require('../utils/db');
 
-const adminSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: [true, 'Username is required'],
-    unique: true,
-    trim: true,
-    minlength: [3, 'Username must be at least 3 characters'],
-    maxlength: [30, 'Username cannot exceed 30 characters'],
-    lowercase: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    trim: true,
-    lowercase: true,
-    validate: {
-      validator: validator.isEmail,
-      message: 'Please provide a valid email'
+class Admin {
+  // Find by email (table user tidak ada email, jadi pakai username)
+  static async findByEmail(email) {
+    try {
+      const sql = `
+        SELECT id, username, password, role
+        FROM user 
+        WHERE username = ? 
+        LIMIT 1
+      `;
+      return await DB.findOne(sql, [email]); // Pakai username sebagai email
+    } catch (error) {
+      console.error('Find by email error:', error);
+      throw error;
     }
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false // Don't return password in queries
-  },
-  role: {
-    type: String,
-    enum: ['superadmin', 'admin', 'cashier'],
-    default: 'admin'
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: {
-    type: Date
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
   }
-});
 
-// Hash password before saving
-adminSchema.pre('save', async function(next) {
-  // Only hash the password if it's modified (or new)
-  if (!this.isModified('password')) return next();
-  
-  try {
-    // Generate salt
-    const salt = await bcrypt.genSalt(10);
-    // Hash password
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  // Find by username
+  static async findByUsername(username) {
+    try {
+      const sql = `
+        SELECT id, username, password, role
+        FROM user 
+        WHERE username = ? 
+        LIMIT 1
+      `;
+      return await DB.findOne(sql, [username]);
+    } catch (error) {
+      console.error('Find by username error:', error);
+      throw error;
+    }
   }
-});
 
-// Update last login timestamp
-adminSchema.methods.updateLastLogin = async function() {
-  this.lastLogin = Date.now();
-  await this.save({ validateBeforeSave: false });
-};
+  // Find by ID
+  static async findById(id) {
+    try {
+      const sql = `
+        SELECT id, username, role
+        FROM user 
+        WHERE id = ?
+        LIMIT 1
+      `;
+      return await DB.findOne(sql, [id]);
+    } catch (error) {
+      console.error('Find by ID error:', error);
+      throw error;
+    }
+  }
 
-// Compare password method
-adminSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+  // Create new admin/user
+  static async create(adminData) {
+    try {
+      // Validation
+      if (!adminData.username) {
+        throw new Error('Username is required');
+      }
 
-// Remove sensitive information when converting to JSON
-adminSchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  delete obj.password;
-  delete obj.__v;
-  return obj;
-};
+      if (!adminData.password || adminData.password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
 
-module.exports = mongoose.model('Admin', adminSchema);
+      // Check if username already exists
+      const existingUser = await this.findByUsername(adminData.username);
+      if (existingUser) {
+        throw new Error('Username already taken');
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(adminData.password, 10);
+      
+      const data = {
+        username: adminData.username,
+        password: hashedPassword,
+        role: adminData.role || 'user' // 'admin' atau 'user'
+      };
+
+      // Insert into database
+      const result = await DB.insert('user', data);
+      
+      // Return without password
+      const { password, ...userWithoutPassword } = result;
+      return userWithoutPassword;
+
+    } catch (error) {
+      console.error('Create admin error:', error);
+      throw error;
+    }
+  }
+
+  // Compare password
+  static async comparePassword(candidatePassword, hashedPassword) {
+    try {
+      return await bcrypt.compare(candidatePassword, hashedPassword);
+    } catch (error) {
+      console.error('Compare password error:', error);
+      throw error;
+    }
+  }
+
+  // Get all users (for admin only)
+  static async findAll() {
+    try {
+      const sql = `
+        SELECT id, username, role
+        FROM user 
+        ORDER BY id DESC
+      `;
+      return await DB.query(sql);
+    } catch (error) {
+      console.error('Find all users error:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Admin;
