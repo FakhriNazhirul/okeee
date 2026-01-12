@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin - Kelola Menu</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body onload="checkAuth(); loadAdminMenus();">
+    <nav class="navbar">
+        <div class="navbar-container">
+            <p>Admin Kopi Nusantara</p>
+            <ul>
+                <li><a href="dashboard.html">Menu</a></li>
+                <li><a href="orders.html">Pesanan</a></li>
+                <li><a href="#" onclick="handleLogout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main style="padding: 20px;">
+        <h2>Manajemen Menu</h2>
+        <button class="btn" onclick="showAddModal()">+ Tambah Menu Baru</button>
+
+        <table id="menuTable" style="width:100%; margin-top:20px; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f4f4f4;">
+                    <th>Gambar</th>
+                    <th>Nama Menu</th>
+                    <th>Harga</th>
+                    <th>Deskripsi</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="menuList">
+                </tbody>
+        </table>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        async function loadAdminMenus() {
+            try {
+                // Memanggil menuController.getAllMenus melalui API
+                const response = await apiRequest('/menu'); 
+                const tbody = document.getElementById('menuList');
+                tbody.innerHTML = '';
+
+                if (response.success && response.data) {
+                    response.data.forEach(item => {
+                        // ImageUrl ditambahkan ../ agar bisa mengakses folder assets dari folder admin
+                        // Properti item (name, price, imageUrl) disesuaikan dengan transformToResponse di backend
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><img src="../${item.imageUrl}" width="50" style="border-radius: 5px;"></td>
+                                <td>${item.name}</td>
+                                <td>Rp ${item.price.toLocaleString('id-ID')}</td>
+                                <td>${item.description}</td>
+                                <td>
+                                    <button class="btn" style="background: #dc3545; padding: 5px 10px;" onclick="deleteMenu(${item.id})">Hapus</button>
+                                </td>
+                            </tr>`;
+                    });
+                }
+            } catch (err) { 
+                alert("Gagal memuat menu: " + err.message); 
+            }
+        }
+
+        async function deleteMenu(id) {
+            if(confirm('Yakin ingin menghapus menu ini?')) {
+                try {
+                    // Mengirim request DELETE ke backend
+                    await apiRequest(`/menu/${id}`, { method: 'DELETE' }); 
+                    alert('Menu berhasil dihapus');
+                    loadAdminMenus(); // Refresh tabel
+                } catch (err) { 
+                    alert(err.message); 
+                }
+            }
+        }
+
+        function showAddModal() {
+            // Logika untuk menampilkan modal tambah menu bisa ditambahkan di sini
+            alert("Fungsi Tambah Menu dapat diintegrasikan dengan form POST ke /api/menu");
+        }
+    </script>
+</body>
+</html>

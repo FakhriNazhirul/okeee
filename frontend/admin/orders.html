@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Daftar Pesanan - Kopi Nusantara</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body onload="checkAuth(); loadOrders();">
+    <nav class="navbar">
+        <div class="navbar-container">
+            <p>Admin Kopi Nusantara</p>
+            <ul>
+                <li><a href="dashboard.html">Menu</a></li>
+                <li><a href="orders.html">Pesanan</a></li>
+                <li><a href="#" onclick="handleLogout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main style="padding: 20px;">
+        <h2>Pesanan Masuk</h2>
+        <div id="ordersContainer">
+            </div>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        async function loadOrders() {
+            try {
+                // Catatan: Pastikan Anda sudah membuat endpoint GET /api/orders di backend
+                const response = await apiRequest('/orders'); 
+                const container = document.getElementById('ordersContainer');
+                container.innerHTML = '';
+
+                response.data.forEach(order => {
+                    // Menggunakan format data dari orderSchema (customer.name, formattedTotal, status)
+                    container.innerHTML += `
+                        <div class="order-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px;">
+                            <p><strong>No. Pesanan:</strong> ${order.orderNumber}</p>
+                            <p><strong>Pelanggan:</strong> ${order.customer.name}</p>
+                            <p><strong>Total:</strong> ${order.formattedTotal}</p>
+                            <p><strong>Status:</strong> <span class="badge">${order.status}</span></p>
+                            <p><strong>Tipe:</strong> ${order.orderType}</p>
+                        </div>`;
+                });
+            } catch (err) {
+                document.getElementById('ordersContainer').innerHTML = "<p>Gagal memuat pesanan. Pastikan MongoDB terhubung.</p>";
+            }
+        }
+    </script>
+</body>
+</html>

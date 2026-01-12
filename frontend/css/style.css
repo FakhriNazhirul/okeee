@@ -200,6 +200,36 @@ main{
 }
 
 /* menu */
+/* 1. Ubah grid menjadi 1 kolom agar menu tampil full-width seperti Gambar 2 */
+.menu-countainer {
+  display: flex;            /* Ubah dari grid menjadi flex */
+  flex-direction: column;   /* Berbaris ke bawah */
+  gap: 40px;
+  justify-content: center;
+  align-items: center;      /* Pusatkan card */
+  max-width: 1000px;        /* Batasi lebar maksimal agar tidak terlalu lebar di layar PC */
+  margin: 0 auto;           /* Pusatkan kontainer */
+}
+
+/* 2. Pastikan card mengambil lebar penuh kontainer */
+.menu-card {
+  background-color: #fff;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: transform 0.3s ease;
+  width: 100%;              /* Card memenuhi lebar kontainer */
+}
+
+/* 3. Perbesar ukuran gambar agar terlihat menonjol seperti di Gambar 2 */
+.menu-icon img {  
+  width: 100%;
+  height: 450px;            /* Tambah tinggi gambar (sebelumnya 350px) */
+  object-fit: cover;
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+}
+
 .menu{
   margin-top: 100px;
   background-color: #fffaf2;

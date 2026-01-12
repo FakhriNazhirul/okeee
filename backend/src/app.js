@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const app = express();
 const menuRoutes = require('./routes/menuRoutes');
@@ -7,6 +8,8 @@ const authRoutes = require('./routes/authRoutes');
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Izinkan akses ke folder assets frontend dari backend
+app.use('/assets', express.static(path.join(__dirname, '../../frontend/assets')));
 
 // Redirect root to API
 app.get('/', (req, res) => {
