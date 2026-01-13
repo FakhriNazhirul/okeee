@@ -2,87 +2,240 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Admin - Kelola Menu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Kopi Nusantara</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #7a3e02; --accent: #ce6305; --bg: #f8f9fa; }
+        body { background: var(--bg); }
+        .dashboard-wrapper { max-width: 1200px; margin: 100px auto; padding: 20px; }
+        
+        /* Stats Styling */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card-new { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); transition: 0.3s; }
+        .stat-card-new:hover { transform: translateY(-5px); }
+        .stat-card-new i { font-size: 2rem; color: var(--accent); margin-bottom: 10px; }
+
+        /* Table & Controls */
+        .admin-box { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .search-box { position: relative; flex: 1; max-width: 400px; }
+        .search-box input { width: 100%; padding: 12px 40px; border-radius: 25px; border: 1px solid #ddd; outline: none; }
+        .search-box i { position: absolute; left: 15px; top: 15px; color: #888; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #fdfdfd; padding: 15px; text-align: left; color: #777; font-weight: 600; border-bottom: 2px solid #eee; }
+        td { padding: 15px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .menu-img-mini { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Modal Customization */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+        .modal-content { background: white; margin: 5% auto; padding: 35px; border-radius: 20px; width: 550px; animation: slideDown 0.4s; }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
 </head>
-<body onload="checkAuth(); loadAdminMenus();">
+<body onload="protectAdminPage(); loadDashboardData();">
     <nav class="navbar">
         <div class="navbar-container">
-            <p>Admin Kopi Nusantara</p>
-            <ul>
-                <li><a href="dashboard.html">Menu</a></li>
-                <li><a href="orders.html">Pesanan</a></li>
-                <li><a href="#" onclick="handleLogout()">Logout</a></li>
-            </ul>
+            <div class="logo-container">
+                <img src="../assets/coffee-cup_16590132.png" alt="Logo">
+                <p>Admin Panel</p>
+            </div>
+            <div class="nav">
+                <ul>
+                    <li><a href="dashboard.html" class="active"><i class="fas fa-mug-hot"></i> Menu</a></li>
+                    <li><a href="orders.html"><i class="fas fa-shopping-cart"></i> Pesanan</a></li>
+                    <li><a href="#" onclick="logoutUser()" style="color: #e74c3c;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <main style="padding: 20px;">
-        <h2>Manajemen Menu</h2>
-        <button class="btn" onclick="showAddModal()">+ Tambah Menu Baru</button>
+    <div class="dashboard-wrapper">
+        <div class="stats-grid">
+            <div class="stat-card-new">
+                <i class="fas fa-list"></i>
+                <p>Total Menu</p>
+                <h2 id="totalMenuCount">0</h2>
+            </div>
+            <div class="stat-card-new">
+                <i class="fas fa-check-circle"></i>
+                <p>Status Sistem</p>
+                <h2>Online</h2>
+            </div>
+            <div class="stat-card-new">
+                <i class="fas fa-calendar-day"></i>
+                <p>Update Terakhir</p>
+                <h2 style="font-size: 1.1rem;" id="lastUpdate">-</h2>
+            </div>
+        </div>
 
-        <table id="menuTable" style="width:100%; margin-top:20px; border-collapse: collapse;">
-            <thead>
-                <tr style="background: #f4f4f4;">
-                    <th>Gambar</th>
-                    <th>Nama Menu</th>
-                    <th>Harga</th>
-                    <th>Deskripsi</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="menuList">
-                </tbody>
-        </table>
-    </main>
+        <div class="admin-box">
+            <div class="table-header">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="menuSearch" placeholder="Cari nama kopi..." onkeyup="filterMenu()">
+                </div>
+                <button class="btn" onclick="openModal()"><i class="fas fa-plus"></i> Tambah Menu Baru</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Gambar</th>
+                        <th>Detail Menu</th>
+                        <th>Harga</th>
+                        <th>Kategori</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="menuList">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 id="modalTitle">Tambah Menu</h2>
+                <i class="fas fa-times" onclick="closeModal()" style="cursor: pointer; color: #999;"></i>
+            </div>
+            <form id="menuForm">
+                <input type="hidden" id="menuId">
+                <div class="form-group">
+                    <label>Nama Menu</label>
+                    <input type="text" id="menuName" placeholder="Contoh: Kopi Susu Gula Aren" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Harga (IDR)</label>
+                        <input type="number" id="menuPrice" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="menuCategory" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #eee;">
+                            <option value="Espresso Based">Espresso Based</option>
+                            <option value="Manual Brew">Manual Brew</option>
+                            <option value="Non-Coffee">Non-Coffee</option>
+                            <option value="Snack">Snack</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Deskripsi Singkat</label>
+                    <textarea id="menuDesc" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #eee;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Nama File Gambar (di folder assets)</label>
+                    <input type="text" id="menuImage" placeholder="contoh: latte.jpg">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 30px;">
+                    <button type="submit" class="btn" style="flex: 2;">Simpan Perubahan</button>
+                    <button type="button" class="btn" style="flex: 1; background: #eee; color: #555;" onclick="closeModal()">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
     <script>
-        async function loadAdminMenus() {
-            try {
-                // Memanggil menuController.getAllMenus melalui API
-                const response = await apiRequest('/menu'); 
-                const tbody = document.getElementById('menuList');
-                tbody.innerHTML = '';
+        let allMenus = [];
 
-                if (response.success && response.data) {
-                    response.data.forEach(item => {
-                        // ImageUrl ditambahkan ../ agar bisa mengakses folder assets dari folder admin
-                        // Properti item (name, price, imageUrl) disesuaikan dengan transformToResponse di backend
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><img src="../${item.imageUrl}" width="50" style="border-radius: 5px;"></td>
-                                <td>${item.name}</td>
-                                <td>Rp ${item.price.toLocaleString('id-ID')}</td>
-                                <td>${item.description}</td>
-                                <td>
-                                    <button class="btn" style="background: #dc3545; padding: 5px 10px;" onclick="deleteMenu(${item.id})">Hapus</button>
-                                </td>
-                            </tr>`;
-                    });
+        async function loadDashboardData() {
+            try {
+                const response = await apiRequest('/menu');
+                if (response.success) {
+                    allMenus = response.data;
+                    renderTable(allMenus);
+                    document.getElementById('totalMenuCount').textContent = allMenus.length;
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('id-ID');
                 }
-            } catch (err) { 
-                alert("Gagal memuat menu: " + err.message); 
-            }
+            } catch (err) { console.error('Gagal memuat data:', err); }
         }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('menuList');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><img src="../assets/${item.imageUrl}" class="menu-img-mini" onerror="this.src='../assets/coffee-cup_16590132.png'"></td>
+                        <td>
+                            <div style="font-weight: bold; font-size: 1.05rem;">${item.name}</div>
+                            <div style="font-size: 0.85rem; color: #888;">${item.description || 'Tanpa deskripsi'}</div>
+                        </td>
+                        <td style="font-weight: bold; color: var(--accent);">Rp ${item.price.toLocaleString('id-ID')}</td>
+                        <td><span class="badge" style="background: #eef2f7; color: #5a6a85; padding: 5px 12px; border-radius: 20px;">${item.category || 'General'}</span></td>
+                        <td>
+                            <button class="btn-edit" onclick="editMenu(${JSON.stringify(item).replace(/"/g, '&quot;')})" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" onclick="deleteMenu(${item.id})" title="Hapus"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterMenu() {
+            const query = document.getElementById('menuSearch').value.toLowerCase();
+            const filtered = allMenus.filter(m => m.name.toLowerCase().includes(query));
+            renderTable(filtered);
+        }
+
+        // Fungsi Modal & Form Handler (Sudah terintegrasi dengan backend)
+        const modal = document.getElementById('menuModal');
+        const form = document.getElementById('menuForm');
+
+        function openModal() {
+            document.getElementById('modalTitle').textContent = 'Tambah Menu Baru';
+            form.reset();
+            document.getElementById('menuId').value = '';
+            modal.style.display = 'block';
+        }
+
+        function closeModal() { modal.style.display = 'none'; }
+
+        function editMenu(item) {
+            document.getElementById('modalTitle').textContent = 'Edit Detail Menu';
+            document.getElementById('menuId').value = item.id;
+            document.getElementById('menuName').value = item.name;
+            document.getElementById('menuPrice').value = item.price;
+            document.getElementById('menuDesc').value = item.description;
+            document.getElementById('menuImage').value = item.imageUrl;
+            document.getElementById('menuCategory').value = item.category || 'Espresso Based';
+            modal.style.display = 'block';
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('menuId').value;
+            const data = {
+                name: document.getElementById('menuName').value,
+                price: parseFloat(document.getElementById('menuPrice').value),
+                description: document.getElementById('menuDesc').value,
+                image_url: document.getElementById('menuImage').value,
+                category: document.getElementById('menuCategory').value
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `/menu/${id}` : '/menu';
+                await apiRequest(url, { method: method, body: JSON.stringify(data) });
+                alert('Berhasil menyimpan data!');
+                closeModal();
+                loadDashboardData();
+            } catch (err) { alert('Error: ' + err.message); }
+        };
 
         async function deleteMenu(id) {
-            if(confirm('Yakin ingin menghapus menu ini?')) {
+            if(confirm('Apakah Anda yakin ingin menghapus menu ini?')) {
                 try {
-                    // Mengirim request DELETE ke backend
-                    await apiRequest(`/menu/${id}`, { method: 'DELETE' }); 
-                    alert('Menu berhasil dihapus');
-                    loadAdminMenus(); // Refresh tabel
-                } catch (err) { 
-                    alert(err.message); 
-                }
+                    await apiRequest(`/menu/${id}`, { method: 'DELETE' });
+                    loadDashboardData();
+                } catch (err) { alert(err.message); }
             }
-        }
-
-        function showAddModal() {
-            // Logika untuk menampilkan modal tambah menu bisa ditambahkan di sini
-            alert("Fungsi Tambah Menu dapat diintegrasikan dengan form POST ke /api/menu");
         }
     </script>
 </body>
