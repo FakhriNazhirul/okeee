@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Menu - Kopi Nusantara</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Backup styles */
+        .admin-container { display: flex; min-height: 100vh; }
+        .admin-sidebar { width: 250px; background: #2c3e50; color: white; }
+        .admin-main { flex: 1; padding: 20px; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        .btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; }
+        .btn-primary { background: #2ecc71; color: white; }
+        .btn-edit { background: #3498db; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; color: white; }
+        .badge-coffee { background: #e74c3c; }
+        .badge-non-coffee { background: #3498db; }
+        .badge-makanan { background: #2ecc71; }
+        
+        /* Modal Styles */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 2% auto;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Style untuk preview gambar */
+        .image-preview-container {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            object-fit: contain;
+        }
+        
+        .file-info {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* Area upload dengan drag & drop */
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        
+        .upload-area:hover {
+            background: #edf2f7;
+            border-color: #2980b9;
+        }
+        
+        .upload-area.dragover {
+            background: #e3f2fd;
+            border-color: #1abc9c;
+        }
+        
+        .upload-icon {
+            font-size: 32px;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 40px; color: #7f8c8d; }
+        
+        /* Table Responsive */
+        .table-responsive { overflow-x: auto; }
+        
+        /* Action buttons */
+        .action-buttons { display: flex; gap: 5px; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-coffee"></i> Kopi Nusantara</h2>
+                <p>Admin Panel</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin/dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="/admin/menu" class="active">
+                    <i class="fas fa-utensils"></i> Kelola Menu
+                </a>
+                <a href="/admin/orders">
+                    <i class="fas fa-shopping-cart"></i> Pesanan
+                </a>
+                <a href="/" target="_blank">
+                    <i class="fas fa-home"></i> Lihat Website
+                </a>
+                <a href="#" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-main">
+            <header class="admin-header">
+                <h1>Kelola Menu</h1>
+                <div class="admin-user">
+                    <span id="adminUsername">Admin</span>
+                    <span class="badge badge-coffee">Admin</span>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Action Bar -->
+                <div class="action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Daftar Menu</h2>
+                    <button id="btnTambahMenu" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Tambah Menu Baru
+                    </button>
+                </div>
+
+                <!-- Loading & Error -->
+                <div id="loading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Memuat data menu...</p>
+                </div>
+                
+                <div id="errorMessage" style="display: none; text-align: center; padding: 20px; background: #ffebee; color: #c62828; border-radius: 5px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="errorText">Gagal memuat data menu</span>
+                    <button onclick="loadMenuData()" style="background: #1565c0; color: white; border: none; padding: 5px 15px; border-radius: 3px; margin-left: 10px; cursor: pointer;">
+                        <i class="fas fa-redo"></i> Coba Lagi
+                    </button>
+                </div>
+
+                <!-- Menu Table -->
+                <div id="menuTableContainer" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama Menu</th>
+                                    <th>Harga</th>
+                                    <th>Kategori</th>
+                                    <th>Deskripsi</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="menuTableBody">
+                                <!-- Data akan diisi oleh JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" style="display: none; text-align: center; padding: 40px;">
+                    <i class="fas fa-utensils" style="font-size: 48px; color: #95a5a6;"></i>
+                    <h3 style="color: #7f8c8d;">Belum ada menu</h3>
+                    <p style="color: #7f8c8d;">Tambahkan menu pertama Anda untuk mulai berjualan</p>
+                    <button id="btnTambahFirst" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Tambah Menu Pertama
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                <h3 id="modalTitle" style="margin: 0; color: #2c3e50;">Tambah Menu Baru</h3>
+                <button onclick="closeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #7f8c8d;">×</button>
+            </div>
+            
+            <form id="menuForm" enctype="multipart/form-data">
+                <input type="hidden" id="menuId">
+                <input type="hidden" id="gambar_existing">
+                
+                <!-- Nama Menu -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Nama Menu *</label>
+                    <input type="text" id="nama_menu" required 
+                           style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+                           placeholder="Contoh: Espresso Double Shot">
+                </div>
+                
+                <!-- Kategori & Harga dalam satu baris -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Kategori *</label>
+                        <select id="kategori" required 
+                                style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white;">
+                            <option value="">Pilih Kategori</option>
+                            <option value="coffee">Coffee</option>
+                            <option value="non-coffee">Non-Coffee</option>
+                            <option value="makanan">Makanan</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Harga (Rp) *</label>
+                        <input type="number" id="harga" min="0" required 
+                               style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+                               placeholder="Contoh: 25000">
+                    </div>
+                </div>
+                
+                <!-- Deskripsi -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Deskripsi</label>
+                    <textarea id="deskripsi" rows="3" 
+                              style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical;"
+                              placeholder="Deskripsi singkat tentang menu..."></textarea>
+                </div>
+                
+                <!-- Upload Gambar -->
+                <div style="margin-bottom: 25px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Gambar Menu</label>
+                    
+                    <!-- File Preview -->
+                    <div id="imagePreview" class="image-preview-container" style="display: none;">
+                        <p style="margin-bottom: 8px; font-weight: 500; color: #2c3e50;">Preview:</p>
+                        <img id="previewImage" class="preview-image" src="" alt="Preview Gambar">
+                        <div id="fileName" class="file-info"></div>
+                    </div>
+                    
+                    <!-- File Upload Area -->
+                    <div id="uploadArea" class="upload-area" onclick="document.getElementById('gambar').click()">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <p style="margin: 10px 0; color: #5a6c7d; font-size: 15px;">
+                            <span style="font-weight: 500;">Klik untuk memilih gambar</span><br>
+                            atau drag & drop file di sini
+                        </p>
+                        <input type="file" id="gambar" name="gambar" accept="image/*" style="display: none;" onchange="previewFile()">
+                        <div style="margin-top: 10px;">
+                            <button type="button" class="btn" style="background: #3498db; color: white; padding: 8px 20px; border-radius: 4px;">
+                                <i class="fas fa-folder-open"></i> Pilih File
+                            </button>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 12px; color: #95a5a6;">
+                            Format yang didukung: JPG, PNG, GIF, WebP<br>
+                            Ukuran maksimal: 5MB
+                        </p>
+                    </div>
+                    
+                    <!-- Tombol Hapus Gambar (hanya muncul saat edit) -->
+                    <div id="removeImageBtn" style="display: none; margin-top: 10px; text-align: center;">
+                        <button type="button" onclick="removeImage()" class="btn" style="background: #e74c3c; color: white; padding: 8px 20px; font-size: 13px;">
+                            <i class="fas fa-trash"></i> Hapus Gambar Saat Ini
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tombol Aksi -->
+                <div style="display: flex; gap: 12px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px; font-size: 15px; font-weight: 500;">
+                        <i class="fas fa-save"></i> Simpan Menu
+                    </button>
+                    <button type="button" onclick="closeModal()" class="btn" style="flex: 1; background: #95a5a6; color: white; padding: 12px; font-size: 15px;">
+                        <i class="fas fa-times"></i> Batal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // ==================== KONFIGURASI ====================
+        const API_BASE_URL = 'http://localhost:3000/api';
+        
+        // ==================== GLOBAL STATE ====================
+        let currentMenuData = null; // Untuk menyimpan data menu saat ini
+
+        // ==================== FUNGSI UTAMA ====================
+        async function loadMenuData() {
+            console.log('📋 Memuat data menu...');
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('menuTableContainer').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            
+            try {
+                // Fetch data dari API
+                const response = await fetch(`${API_BASE_URL}/menu`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Gagal mengambil data`);
+                }
+                
+                const menuData = await response.json();
+                console.log('✅ Data menu diterima:', menuData);
+                
+                // Simpan data ke global state
+                currentMenuData = menuData;
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                // Tampilkan data
+                if (menuData.length > 0) {
+                    document.getElementById('menuTableContainer').style.display = 'block';
+                    updateMenuTable(menuData);
+                } else {
+                    document.getElementById('emptyState').style.display = 'block';
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorText').textContent = error.message;
+            }
+        }
+        
+        function updateMenuTable(menus) {
+            const tbody = document.getElementById('menuTableBody');
+            tbody.innerHTML = '';
+            
+            menus.forEach((menu, index) => {
+                const row = document.createElement('tr');
+                
+                // Format harga
+                const formattedPrice = new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0
+                }).format(menu.harga || 0);
+                
+                // Badge kategori
+                let badgeClass = 'badge-coffee';
+                if (menu.kategori === 'non-coffee') badgeClass = 'badge-non-coffee';
+                if (menu.kategori === 'makanan') badgeClass = 'badge-makanan';
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>
+                        <strong>${menu.nama_menu || 'Unnamed'}</strong>
+                        ${menu.gambar ? `<br><small><i class="fas fa-image"></i> Ada gambar</small>` : ''}
+                    </td>
+                    <td><strong>${formattedPrice}</strong></td>
+                    <td>
+                        <span class="badge ${badgeClass}">
+                            ${menu.kategori || 'Unknown'}
+                        </span>
+                    </td>
+                    <td>${menu.deskripsi ? menu.deskripsi.substring(0, 50) + (menu.deskripsi.length > 50 ? '...' : '') : '-'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button onclick="editMenu(${menu.id})" class="btn btn-edit" style="padding: 5px 10px;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteMenu(${menu.id}, '${menu.nama_menu}')" class="btn btn-delete" style="padding: 5px 10px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // ==================== FILE UPLOAD FUNCTIONS ====================
+        function previewFile() {
+            const fileInput = document.getElementById('gambar');
+            const preview = document.getElementById('imagePreview');
+            const previewImage = document.getElementById('previewImage');
+            const fileName = document.getElementById('fileName');
+            const uploadArea = document.getElementById('uploadArea');
+            
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                
+                // Validasi ukuran file (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File terlalu besar! Maksimal 5MB.');
+                    resetFileInput();
+                    return;
+                }
+                
+                // Tampilkan nama file
+                const fileSize = (file.size / 1024).toFixed(2);
+                fileName.textContent = `File: ${file.name} (${fileSize} KB)`;
+                
+                // Preview gambar
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Sembunyikan upload area saat ada preview
+                    uploadArea.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function resetFileInput() {
+            const fileInput = document.getElementById('gambar');
+            const preview = document.getElementById('imagePreview');
+            const uploadArea = document.getElementById('uploadArea');
+            const removeBtn = document.getElementById('removeImageBtn');
+            
+            fileInput.value = '';
+            preview.style.display = 'none';
+            uploadArea.style.display = 'block';
+            removeBtn.style.display = 'none';
+        }
+        
+        function removeImage() {
+            if (confirm('Hapus gambar yang sedang ditampilkan?')) {
+                // Reset gambar existing
+                document.getElementById('gambar_existing').value = '';
+                resetFileInput();
+            }
+        }
+
+        // ==================== MODAL FUNCTIONS ====================
+        function openModal(title = 'Tambah Menu Baru', menu = null) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('menuModal').style.display = 'block';
+            
+            // Reset form dan file input
+            resetFileInput();
+            
+            if (menu) {
+                // Edit mode
+                document.getElementById('menuId').value = menu.id;
+                document.getElementById('nama_menu').value = menu.nama_menu || '';
+                document.getElementById('kategori').value = menu.kategori || '';
+                document.getElementById('harga').value = menu.harga || '';
+                document.getElementById('deskripsi').value = menu.deskripsi || '';
+                
+                // Jika ada gambar sebelumnya
+                if (menu.gambar) {
+                    document.getElementById('gambar_existing').value = menu.gambar;
+                    const preview = document.getElementById('imagePreview');
+                    const previewImage = document.getElementById('previewImage');
+                    const fileName = document.getElementById('fileName');
+                    const uploadArea = document.getElementById('uploadArea');
+                    const removeBtn = document.getElementById('removeImageBtn');
+                    
+                    previewImage.src = menu.gambar;
+                    fileName.textContent = 'Gambar saat ini';
+                    preview.style.display = 'block';
+                    uploadArea.style.display = 'none';
+                    removeBtn.style.display = 'block';
+                }
+            } else {
+                // Add mode
+                document.getElementById('menuForm').reset();
+                document.getElementById('menuId').value = '';
+            }
+            
+            // Set focus ke input pertama
+            setTimeout(() => {
+                document.getElementById('nama_menu').focus();
+            }, 100);
+        }
+        
+        function closeModal() {
+            document.getElementById('menuModal').style.display = 'none';
+            document.getElementById('menuForm').reset();
+            resetFileInput();
+        }
+
+        // ==================== CRUD OPERATIONS ====================
+        async function saveMenu(e) {
+    e.preventDefault();
+    
+    console.log('💾 Starting save process...');
+    
+    const menuId = document.getElementById('menuId').value;
+    const isEdit = !!menuId;
+    
+    // Buat FormData
+    const formData = new FormData();
+    formData.append('nama_menu', document.getElementById('nama_menu').value.trim());
+    formData.append('kategori', document.getElementById('kategori').value);
+    formData.append('harga', document.getElementById('harga').value);
+    formData.append('deskripsi', document.getElementById('deskripsi').value.trim() || '');
+    
+    if (isEdit) {
+        formData.append('gambar_existing', document.getElementById('gambar_existing').value || '');
+    }
+    
+    // Tambahkan file jika ada
+    const fileInput = document.getElementById('gambar');
+    if (fileInput.files[0]) {
+        formData.append('gambar', fileInput.files[0]);
+        console.log('📸 File included:', fileInput.files[0].name);
+    }
+    
+    // Validasi sederhana
+    const namaMenu = formData.get('nama_menu');
+    const kategori = formData.get('kategori');
+    const harga = parseFloat(formData.get('harga'));
+    
+    if (!namaMenu || !kategori || !harga || harga <= 0) {
+        alert('Mohon isi semua field yang wajib diisi:\n• Nama Menu\n• Kategori\n• Harga (angka positif)');
+        return;
+    }
+    
+    // Tampilkan loading
+    const submitBtn = document.querySelector('#menuForm button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const originalDisabled = submitBtn.disabled;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    submitBtn.disabled = true;
+    
+    try {
+        const url = isEdit ? `${API_BASE_URL}/menu/${menuId}` : `${API_BASE_URL}/menu`;
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        console.log(`📡 Sending ${method} to ${url}`);
+        
+        const response = await fetch(url, {
+            method: method,
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        console.log('📄 Server response:', result);
+        
+        if (response.ok && result.success) {
+            // Success
+            alert(`✅ ${result.message}`);
+            console.log('✅ Save successful');
+            closeModal();
+            loadMenuData();
+        } else {
+            // Server error
+            console.error('❌ Server returned error:', result);
+            
+            let errorMessage = result.message || 'Gagal menyimpan menu';
+            if (result.details) {
+                errorMessage += `\n\nDetail: ${result.details}`;
+            }
+            
+            alert(`❌ ${errorMessage}`);
+            
+            // Jika error karena tabel tidak ada, tawarkan untuk create table
+            if (result.code === 'ER_NO_SUCH_TABLE') {
+                if (confirm('Tabel menu tidak ditemukan. Buat tabel sekarang?')) {
+                    createTable();
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Network/JavaScript error:', error);
+        alert(`❌ Error: ${error.message}\n\nCek console untuk detail.`);
+    } finally {
+        // Restore button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = originalDisabled;
+    }
+}
+
+// Fungsi untuk membuat tabel via API
+async function createTable() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/test-db`);
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Tabel sudah ada atau berhasil dibuat.');
+            loadMenuData();
+        } else {
+            alert('❌ Gagal membuat tabel: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error creating table:', error);
+        alert('Error creating table: ' + error.message);
+    }
+}
+        function editMenu(id) {
+            console.log('✏️ Edit menu ID:', id);
+            
+            if (!currentMenuData) {
+                alert('Data menu belum dimuat. Coba refresh halaman.');
+                return;
+            }
+            
+            const menu = currentMenuData.find(m => m.id == id);
+            if (menu) {
+                openModal('Edit Menu', menu);
+            } else {
+                alert('Menu tidak ditemukan');
+            }
+        }
+        
+        function deleteMenu(id, name) {
+            if (!confirm(`Yakin ingin menghapus menu "${name}"?`)) return;
+            
+            console.log('🗑️ Deleting menu ID:', id);
+            
+            fetch(`${API_BASE_URL}/menu/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message || 'Menu berhasil dihapus');
+                    loadMenuData(); // Refresh table
+                } else {
+                    throw new Error(result.message || 'Gagal menghapus menu');
+                }
+            })
+            .catch(error => {
+                console.error('Delete error:', error);
+                alert(`Error: ${error.message}`);
+            });
+        }
+
+        // ==================== DRAG & DROP FUNCTIONALITY ====================
+        function setupDragAndDrop() {
+            const dropArea = document.getElementById('uploadArea');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight(e) {
+                dropArea.classList.add('dragover');
+            }
+            
+            function unhighlight(e) {
+                dropArea.classList.remove('dragover');
+            }
+            
+            // Handle drop
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    const fileInput = document.getElementById('gambar');
+                    fileInput.files = files;
+                    previewFile();
+                }
+            }
+        }
+
+        // ==================== INITIALIZE ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📋 Menu Manager Initialized');
+            
+            // Auth check
+            const auth = localStorage.getItem('adminAuth');
+            if (!auth) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            try {
+                const authData = JSON.parse(auth);
+                document.getElementById('adminUsername').textContent = `Selamat datang, ${authData.username || 'Admin'}`;
+            } catch (e) {
+                document.getElementById('adminUsername').textContent = 'Admin';
+            }
+            
+            // Load menu data
+            loadMenuData();
+            
+            // Event Listeners
+            document.getElementById('btnTambahMenu').addEventListener('click', () => openModal());
+            document.getElementById('btnTambahFirst').addEventListener('click', () => openModal());
+            document.getElementById('menuForm').addEventListener('submit', saveMenu);
+            
+            // Logout handler
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Yakin ingin logout?')) {
+                    localStorage.removeItem('adminAuth');
+                    window.location.href = '/login';
+                }
+            });
+            
+            // Close modal ketika klik di luar modal
+            document.getElementById('menuModal').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
+            
+            // Close modal dengan ESC key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('menuModal').style.display === 'block') {
+                    closeModal();
+                }
+            });
+            
+            // Setup drag and drop
+            setupDragAndDrop();
+        });
+    </script>
+</body>
+</html>

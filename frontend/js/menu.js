@@ -1,151 +1,233 @@
-class MenuService {
-    static async loadMenus() {
-        try {
-            const result = await ApiService.getAllMenus();
-            
-            if (result.success) {
-                return result.data;
-            }
-            return [];
-        } catch (error) {
-            console.error('Failed to load menus:', error);
-            return [];
-        }
-    }
+/**
+ * JavaScript untuk menampilkan menu Kopi Nusantara
+ * Semua data berasal dari database melalui API
+ */
 
-    static displayMenus(menus, containerId = 'menu-container') {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (menus.length === 0) {
-            container.innerHTML = '<p class="no-data">No menus available</p>';
-            return;
-        }
-        
-        menus.forEach(menu => {
-            const menuCard = this.createMenuCard(menu);
-            container.appendChild(menuCard);
-        });
-    }
+let cart = [];
 
-    static createMenuCard(menu) {
-        const card = document.createElement('div');
-        card.className = 'menu-card';
-        card.innerHTML = `
-            <img src="${menu.imageUrl || 'assets/images/default-coffee.jpg'}" 
-                 alt="${menu.name}" 
-                 onerror="this.src='assets/images/default-coffee.jpg'">
-            <div class="menu-info">
-                <h3>${menu.name}</h3>
-                <p class="description">${menu.description || 'No description available'}</p>
-                <div class="menu-footer">
-                    <span class="price">Rp ${menu.price.toLocaleString()}</span>
-                    <button class="btn-order" onclick="MenuService.orderMenu(${menu.id})">
-                        Order Now
-                    </button>
-                </div>
-            </div>
-        `;
-        return card;
-    }
-
-    static async orderMenu(menuId) {
-        if (!AuthService.checkAuth()) return;
+/**
+ * Inisialisasi dan tampilkan semua menu berdasarkan kategori
+ */
+async function initializeMenu() {
+    try {
+        // Tampilkan semua kategori secara paralel
+        await Promise.all([
+            displayMenuByCategory('coffee', 'coffee-container'),
+            displayMenuByCategory('non-coffee', 'noncoffee-container'),
+            displayMenuByCategory('makanan', 'food-container')
+        ]);
         
-        try {
-            // Get menu details
-            const menu = await ApiService.getMenuById(menuId);
-            
-            // Add to cart (simplified - you might have a cart system)
-            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-            cart.push({
-                id: menu.data.id,
-                name: menu.data.name,
-                price: menu.data.price,
-                quantity: 1,
-                imageUrl: menu.data.imageUrl
-            });
-            localStorage.setItem('cart', JSON.stringify(cart));
-            
-            alert(`${menu.data.name} added to cart!`);
-            
-            // Update cart count
-            this.updateCartCount();
-        } catch (error) {
-            console.error('Order error:', error);
-            alert('Failed to add item to cart');
-        }
-    }
-
-    static updateCartCount() {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const cartCountElements = document.querySelectorAll('.cart-count');
+        // Buat filter kategori
+        await createCategoryFilter();
         
-        cartCountElements.forEach(element => {
-            element.textContent = cart.length;
-            element.style.display = cart.length > 0 ? 'inline' : 'none';
-        });
-    }
-
-    // Admin functions
-    static async loadMenusForAdmin() {
-        try {
-            const result = await ApiService.getAllMenus();
-            return result.success ? result.data : [];
-        } catch (error) {
-            console.error('Failed to load menus for admin:', error);
-            return [];
-        }
-    }
-
-    static displayMenusForAdmin(menus, containerId = 'admin-menu-list') {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        menus.forEach(menu => {
-            const row = this.createAdminMenuRow(menu);
-            container.appendChild(row);
-        });
-    }
-
-    static createAdminMenuRow(menu) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${menu.id}</td>
-            <td>
-                <img src="${menu.imageUrl || 'assets/images/default-coffee.jpg'}" 
-                     alt="${menu.name}" 
-                     class="menu-thumbnail"
-                     onerror="this.src='assets/images/default-coffee.jpg'">
-            </td>
-            <td>${menu.name}</td>
-            <td>${menu.description?.substring(0, 50)}${menu.description?.length > 50 ? '...' : ''}</td>
-            <td>Rp ${menu.price.toLocaleString()}</td>
-            <td>
-                <button class="btn-edit" onclick="MenuService.editMenu(${menu.id})">Edit</button>
-                <button class="btn-delete" onclick="MenuService.deleteMenuAdmin(${menu.id})">Delete</button>
-            </td>
-        `;
-        return row;
-    }
-
-    static async deleteMenuAdmin(menuId) {
-        if (!confirm('Are you sure you want to delete this menu?')) return;
-        
-        try {
-            await ApiService.deleteMenu(menuId);
-            alert('Menu deleted successfully');
-            window.location.reload();
-        } catch (error) {
-            console.error('Delete error:', error);
-            alert('Failed to delete menu');
-        }
+    } catch (error) {
+        console.error('Error initializing menu:', error);
+        showNotification('Gagal memuat menu', 'error');
     }
 }
 
-// Make it available globally
-window.MenuService = MenuService;
+/**
+ * Menampilkan menu berdasarkan kategori dari database
+ */
+async function displayMenuByCategory(kategori, containerId) {
+    const menuContainer = document.getElementById(containerId);
+    
+    if (!menuContainer) return;
+    
+    // Tampilkan loading state
+    menuContainer.innerHTML = `<p class="loading">🔄 Memuat menu ${kategori}...</p>`;
+    
+    try {
+        // Ambil data menu berdasarkan kategori dari API
+        const menuItems = await apiService.getMenuByCategory(kategori);
+        
+        // Kosongkan container
+        menuContainer.innerHTML = '';
+        
+        // Jika tidak ada data
+        if (!menuItems || menuItems.length === 0) {
+            menuContainer.innerHTML = `
+                <div class="empty-message">
+                    <p>😔 Belum ada menu ${kategori} tersedia.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Tambahkan setiap item menu
+        menuItems.forEach(item => {
+            const menuCard = createMenuCard(item);
+            menuContainer.appendChild(menuCard);
+        });
+        
+    } catch (error) {
+        menuContainer.innerHTML = `
+            <div class="error-message">
+                <p>❌ Gagal memuat menu ${kategori}.</p>
+                <button onclick="displayMenuByCategory('${kategori}', '${containerId}')" class="btn-order">
+                    Coba Lagi
+                </button>
+            </div>
+        `;
+        console.error(`Error displaying ${kategori} menu:`, error);
+    }
+}
+
+/**
+ * Membuat filter kategori di halaman utama
+ */
+async function createCategoryFilter() {
+    try {
+        const categories = await apiService.getCategories();
+        
+        const filterContainer = document.createElement('div');
+        filterContainer.className = 'category-filter';
+        
+        filterContainer.innerHTML = `
+            <div class="filter-title">Filter Menu:</div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="showAllCategories()">
+                    Semua Menu
+                </button>
+                ${categories.map(category => `
+                    <button class="filter-btn" onclick="filterByCategory('${category}')">
+                        ${getCategoryDisplayName(category)}
+                    </button>
+                `).join('')}
+            </div>
+        `;
+        
+        // Sisipkan filter sebelum section menu pertama
+        const firstMenuSection = document.querySelector('.menu');
+        if (firstMenuSection) {
+            firstMenuSection.parentNode.insertBefore(filterContainer, firstMenuSection);
+        }
+        
+    } catch (error) {
+        console.error('Error creating category filter:', error);
+    }
+}
+
+/**
+ * Dapatkan nama display untuk kategori
+ */
+function getCategoryDisplayName(category) {
+    const displayNames = {
+        'coffee': '☕ Coffee',
+        'non-coffee': '🥤 Non-Coffee',
+        'makanan': '🍽️ Makanan'
+    };
+    
+    return displayNames[category] || category;
+}
+
+/**
+ * Tampilkan semua kategori
+ */
+function showAllCategories() {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('.filter-btn').classList.add('active');
+    
+    // Tampilkan semua section
+    document.getElementById('menu-coffee').style.display = 'block';
+    document.getElementById('menu-non-coffee').style.display = 'block';
+    document.getElementById('menu-makanan').style.display = 'block';
+}
+
+/**
+ * Filter berdasarkan kategori tertentu
+ */
+function filterByCategory(category) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.includes(getCategoryDisplayName(category))) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Sembunyikan semua section terlebih dahulu
+    document.getElementById('menu-coffee').style.display = 'none';
+    document.getElementById('menu-non-coffee').style.display = 'none';
+    document.getElementById('menu-makanan').style.display = 'none';
+    
+    // Tampilkan section yang dipilih
+    switch(category) {
+        case 'coffee':
+            document.getElementById('menu-coffee').style.display = 'block';
+            break;
+        case 'non-coffee':
+            document.getElementById('menu-non-coffee').style.display = 'block';
+            break;
+        case 'makanan':
+            document.getElementById('menu-makanan').style.display = 'block';
+            break;
+    }
+}
+
+/**
+ * Buat card menu dari data database
+ */
+function createMenuCard(item) {
+    const card = document.createElement('div');
+    card.className = 'menu-card';
+    card.dataset.id = item.id;
+    card.dataset.category = item.kategori;
+    
+    // Format harga ke Rupiah
+    const formattedPrice = new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(item.harga);
+    
+    // Gunakan gambar default jika tidak ada
+    const imageUrl = item.gambar ? `uploads/${item.gambar}` : 'assets/default-menu.jpg';
+    
+    // Icon berdasarkan kategori
+    const categoryIcon = {
+        'coffee': '☕',
+        'non-coffee': '🥤',
+        'makanan': '🍽️'
+    }[item.kategori] || '📋';
+    
+    card.innerHTML = `
+        <div class="menu-image">
+            <img src="${imageUrl}" alt="${item.nama_menu}" loading="lazy" 
+                 onerror="this.src='assets/default-menu.jpg'">
+            <span class="menu-category-badge">
+                ${categoryIcon} ${item.kategori}
+            </span>
+        </div>
+        <div class="menu-content">
+            <h3 class="menu-name">${item.nama_menu}</h3>
+            <p class="menu-description">${item.deskripsi || 'Deskripsi tidak tersedia'}</p>
+            <div class="menu-footer">
+                <span class="menu-price">${formattedPrice}</span>
+                <button class="btn-order" onclick="addToCart(${item.id}, '${item.nama_menu.replace(/'/g, "\\'")}', ${item.harga})">
+                    <i class="fas fa-cart-plus"></i> Pesan
+                </button>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+// Inisialisasi saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    // Load API service terlebih dahulu
+    if (typeof apiService === 'undefined') {
+        console.error('API Service not loaded');
+        return;
+    }
+    
+    // Tampilkan menu dengan kategori
+    initializeMenu();
+    
+    // Setup navigation
+    setupNavigation();
+});

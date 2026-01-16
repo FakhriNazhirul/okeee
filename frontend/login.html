@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Admin - Kopi Nusantara</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="/css/login.css"> <!-- Tambahkan ini -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <div class="login-page">
+<body class="login-page">
+    <div class="login-container-wrapper">
         <div class="login-container">
             <div class="login-logo">
-                <img src="assets/coffee-cup_16590132.png" alt="Logo Kopi Nusantara">
+                <img src="/assets/coffee-cup_16590132.png" alt="Logo Kopi Nusantara">
                 <h1>Kopi Nusantara</h1>
             </div>
             
@@ -55,7 +56,7 @@
             </form>
             
             <div class="login-links">
-                <a href="index.html" class="back-home">
+                <a href="/" class="back-home">
                     <i class="fas fa-arrow-left"></i> Kembali ke Beranda
                 </a>
                 <a href="#" id="forgotPassword">Lupa password?</a>
@@ -80,12 +81,123 @@
     </div>
 
     <!-- JavaScript Files -->
-    <script src="js/auth.js"></script>
+    <script src="/js/auth.js"></script>
     <script>
         // Inisialisasi saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            initLoginPage();
+            // Toggle password visibility
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    // Toggle icon
+                    this.classList.toggle('fa-eye');
+                    this.classList.toggle('fa-eye-slash');
+                });
+            }
+            
+            // Form submission
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    const rememberMe = document.getElementById('remember').checked;
+                    
+                    // Sembunyikan error
+                    document.getElementById('errorMessage').style.display = 'none';
+                    
+                    // Validasi
+                    if (!username || !password) {
+                        showError('Username dan password harus diisi');
+                        return;
+                    }
+                    
+                    // Set loading state
+                    setLoading(true);
+                    
+                    // Simulasi API call (untuk demo)
+                    setTimeout(() => {
+                        // Untuk demo - username: admin, password: admin123
+                        if (username === 'admin' && password === 'admin123') {
+                            // Simpan session
+                            const sessionData = {
+                                isLoggedIn: true,
+                                username: username,
+                                role: 'admin',
+                                loginTime: new Date().toISOString()
+                            };
+                            
+                            // Pilih storage berdasarkan remember me
+                            const storage = rememberMe ? localStorage : sessionStorage;
+                            storage.setItem('auth', JSON.stringify(sessionData));
+                            
+                            // Redirect ke dashboard
+                            window.location.href = '/admin/dashboard';
+                        } else {
+                            showError('Username atau password salah');
+                            setLoading(false);
+                        }
+                    }, 1000); // Simulasi loading 1 detik
+                });
+            }
+            
+            // Forgot password
+            const forgotPassword = document.getElementById('forgotPassword');
+            if (forgotPassword) {
+                forgotPassword.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const username = prompt('Masukkan username untuk reset password:');
+                    if (username) {
+                        alert(`Link reset password telah dikirim ke email terdaftar untuk username: ${username}\n\nIni hanya simulasi.`);
+                    }
+                });
+            }
+            
+            // Cek jika sudah login
+            function checkIfLoggedIn() {
+                const authData = localStorage.getItem('auth') || sessionStorage.getItem('auth');
+                if (!authData) return false;
+                
+                try {
+                    const auth = JSON.parse(authData);
+                    return auth.isLoggedIn && auth.role === 'admin';
+                } catch {
+                    return false;
+                }
+            }
+            
+            // Redirect jika sudah login
+            if (checkIfLoggedIn()) {
+                window.location.href = '/admin/dashboard';
+            }
         });
+        
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            
+            if (errorEl && errorText) {
+                errorText.textContent = message;
+                errorEl.style.display = 'flex';
+            }
+        }
+        
+        function setLoading(loading) {
+            const loginBtn = document.getElementById('loginButton');
+            const btnText = document.getElementById('btnText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            if (loginBtn) loginBtn.disabled = loading;
+            if (btnText) btnText.style.display = loading ? 'none' : 'inline';
+            if (loadingSpinner) loadingSpinner.style.display = loading ? 'inline-block' : 'none';
+        }
     </script>
 </body>
 </html>

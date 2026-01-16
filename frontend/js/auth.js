@@ -361,3 +361,11 @@ if (typeof module !== 'undefined' && module.exports) {
     window.protectAdminPage = protectAdminPage;
     window.checkIfLoggedIn = checkIfLoggedIn;
 }
+
+// Di file auth.js, tambahkan pengecekan untuk login page
+if (window.location.pathname === '/login' || window.location.pathname === '/login.html') {
+    // Jika sudah login, redirect ke dashboard
+    if (checkIfLoggedIn()) {
+        window.location.href = '/admin/dashboard';
+    }
+}

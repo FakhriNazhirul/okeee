@@ -617,3 +617,25 @@ html, body {
 .logout-btn:hover {
     background: #c0392b;
 }
+
+/* ============================================
+   OVERRIDE FOR LOGIN PAGE ONLY
+   ============================================ */
+body.login-page {
+    background: linear-gradient(135deg, #7a3e02 0%, #ce6305 100%) !important;
+}
+
+.login-page .navbar {
+    display: none !important;
+}
+
+.login-page main {
+    display: none !important;
+}
+
+.login-page .menu,
+.login-page .tentang,
+.login-page .kontak,
+.login-page .copyright {
+    display: none !important;
+}
