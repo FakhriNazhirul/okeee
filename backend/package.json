@@ -2,10 +2,11 @@
   "name": "kopi-nusantara-backend",
   "version": "1.0.0",
   "description": "Backend API for Kopi Nusantara",
-  "main": "app.js",
+  "main": "server.js",  
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "start": "node server.js",  
+    "dev": "nodemon server.js",  
+    "build": "echo 'Build completed'"  
   },
   "dependencies": {
     "cors": "^2.8.5",
