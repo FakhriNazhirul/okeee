@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Backup styles jika CSS tidak load */
+        /* Backup styles jika CSS tidak load - SAMA PERSIS DENGAN YANG LAMA */
         .admin-container { display: flex; min-height: 100vh; }
         .admin-sidebar { width: 250px; background: #2c3e50; color: white; }
         .admin-main { flex: 1; padding: 20px; }
@@ -69,10 +69,24 @@
                 <div class="admin-user">
                     <span id="adminUsername">Admin</span>
                     <span class="badge badge-coffee">Admin</span>
+                    <span id="apiStatus" style="margin-left: 10px; font-size: 12px; padding: 3px 8px; border-radius: 10px; background: #f39c12; color: white;">
+                        <i class="fas fa-circle-notch fa-spin"></i> Loading...
+                    </span>
                 </div>
             </header>
 
             <div class="dashboard-content">
+                <!-- Connection Status -->
+                <div id="connectionStatus" style="display: none; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #dc3545;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Koneksi Bermasalah:</strong>
+                    <span id="errorMessage"></span>
+                    <div style="margin-top: 10px;">
+                        <button onclick="testConnection()" class="btn" style="background: #3498db; padding: 5px 10px; font-size: 12px;">
+                            <i class="fas fa-redo"></i> Test Koneksi
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Stats Cards -->
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -114,13 +128,13 @@
                 </div>
 
                 <!-- Recent Menu Table -->
-                <div class="dashboard-card">
+                <!-- <div class="dashboard-card">
                     <div class="card-header">
                         <h2><i class="fas fa-list"></i> Menu Terbaru</h2>
                         <a href="/admin/menu.html" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Tambah Menu
                         </a>
-                    </div>
+                    </div> -->
                     
                     <div id="menuLoading" class="loading">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -135,7 +149,6 @@
                                         <th>Nama Menu</th>
                                         <th>Harga</th>
                                         <th>Kategori</th>
-                                        <th>Tanggal Ditambah</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -179,290 +192,387 @@
         </div>
     </div>
 
-    <!-- JavaScript -->
-    <script>
-    // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'http://localhost:3000';
+    <!-- JavaScript dengan PERBAIKAN untuk API Connection -->
+    <!-- GANTI JavaScript dengan versi ini: -->
+<script>
+// ==================== KONFIGURASI ====================
+const API_BASE_URL = ''; // Relative path
+
+// ==================== FUNGSI UTILITY ====================
+function updateApiStatus(status, message = '') {
+    const statusEl = document.getElementById('apiStatus');
     
-    // ==================== FUNGSI UTAMA ====================
-    async function loadDashboardData() {
-        console.log('🔄 Memuat data dashboard...');
+    if (status === 'online') {
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Online';
+        statusEl.style.background = '#28a745';
+    } else if (status === 'offline') {
+        statusEl.innerHTML = '<i class="fas fa-times-circle"></i> Offline';
+        statusEl.style.background = '#dc3545';
+    } else if (status === 'loading') {
+        statusEl.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> ' + message;
+        statusEl.style.background = '#f39c12';
+    }
+}
+
+function showConnectionError(message) {
+    const statusDiv = document.getElementById('connectionStatus');
+    const errorMsg = document.getElementById('errorMessage');
+    
+    errorMsg.textContent = message;
+    statusDiv.style.display = 'block';
+}
+
+function hideConnectionError() {
+    document.getElementById('connectionStatus').style.display = 'none';
+}
+
+// ==================== FUNGSI TEST KONEKSI ====================
+async function testConnection() {
+    console.log('🧪 Testing connection...');
+    updateApiStatus('loading', 'Testing...');
+    
+    try {
+        // Test 1: API test endpoint
+        const testResponse = await fetch('/api/test');
+        console.log('API Test status:', testResponse.status);
         
+        if (!testResponse.ok) {
+            throw new Error(`API Test failed: ${testResponse.status}`);
+        }
+        
+        const testData = await testResponse.json();
+        console.log('API Test data:', testData);
+        
+        updateApiStatus('online');
+        hideConnectionError();
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Connection test failed:', error);
+        showConnectionError(error.message);
+        updateApiStatus('offline');
+        return false;
+    }
+}
+
+// ==================== FUNGSI LOAD STATISTIK ====================
+async function loadStatistics() {
+    console.log('📊 Loading statistics...');
+    
+    // Coba beberapa endpoint untuk statistik
+    const endpoints = [
+        '/api/menu/stats',
+        '/api/menu-statistics',
+        '/api/menu/count'
+    ];
+    
+    let statsData = null;
+    
+    for (const endpoint of endpoints) {
         try {
-            // 1. Test API endpoint dulu
-            console.log('🔌 Testing API endpoint...');
-            const testResponse = await fetch(`${API_BASE_URL}/api/test`);
+            console.log(`Trying endpoint: ${endpoint}`);
+            const response = await fetch(endpoint);
             
-            if (!testResponse.ok) {
-                const errorText = await testResponse.text();
-                console.error('API Error:', errorText);
-                throw new Error(`API Error ${testResponse.status}`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ ${endpoint} success:`, data);
+                statsData = data;
+                break;
             }
-            
-            const testData = await testResponse.json();
-            console.log('✅ API Test Response:', testData);
-            
-            // 2. Load menu statistics
-            console.log('📊 Mengambil statistik menu...');
-            const statsResponse = await fetch(`${API_BASE_URL}/api/menu/stats`);
-            
-            if (!statsResponse.ok) {
-                throw new Error(`Stats API error: ${statsResponse.status}`);
-            }
-            
-            const statsData = await statsResponse.json();
-            console.log('📈 Menu Statistics:', statsData);
-            
-            // Update stat cards dengan data REAL
-            if (statsData.success) {
-                document.getElementById('totalMenu').textContent = statsData.data.total || 0;
-                document.getElementById('totalCoffee').textContent = statsData.data.coffee || 0;
-                document.getElementById('totalNonCoffee').textContent = statsData.data.nonCoffee || 0;
-                document.getElementById('totalFood').textContent = statsData.data.makanan || 0;
-            }
-            
-            // 3. Load all menu data (gunakan endpoint yang ada di server)
-            console.log('📋 Mengambil semua data menu...');
-            const menuResponse = await fetch(`${API_BASE_URL}/api/menu`);
-            
-            if (!menuResponse.ok) {
-                // Fallback: coba endpoint lain
-                console.log('Coba endpoint alternatif...');
-                const menuResponse2 = await fetch(`${API_BASE_URL}/api/menu/all`);
-                if (!menuResponse2.ok) {
-                    throw new Error(`Menu API error: ${menuResponse2.status}`);
+        } catch (error) {
+            console.log(`❌ ${endpoint} failed:`, error.message);
+        }
+    }
+    
+    // Jika tidak ada endpoint yang berhasil, hitung manual
+    if (!statsData) {
+        console.log('⚠️ No stats endpoint working, calculating manually...');
+        await calculateStatisticsManually();
+        return;
+    }
+    
+    // Update stat cards berdasarkan format response
+    if (statsData.success && statsData.data) {
+        // Format 1: {success: true, data: {total, coffee, nonCoffee, makanan}}
+        document.getElementById('totalMenu').textContent = statsData.data.total || 0;
+        document.getElementById('totalCoffee').textContent = statsData.data.coffee || 0;
+        document.getElementById('totalNonCoffee').textContent = statsData.data.nonCoffee || 0;
+        document.getElementById('totalFood').textContent = statsData.data.makanan || 0;
+    } else if (statsData.total !== undefined) {
+        // Format 2: {total: X}
+        document.getElementById('totalMenu').textContent = statsData.total || 0;
+        // Untuk lainnya, kita hitung dari data menu nanti
+    } else {
+        console.log('⚠️ Unknown stats format, calculating manually...');
+        await calculateStatisticsManually();
+    }
+}
+
+// Fungsi untuk menghitung statistik secara manual
+async function calculateStatisticsManually() {
+    try {
+        const response = await fetch('/api/menu');
+        if (!response.ok) throw new Error('Failed to fetch menu data');
+        
+        const menuData = await response.json();
+        console.log('Calculating stats from', menuData.length, 'items');
+        
+        let total = 0;
+        let coffee = 0;
+        let nonCoffee = 0;
+        let makanan = 0;
+        
+        if (Array.isArray(menuData)) {
+            menuData.forEach(item => {
+                total++;
+                if (item.kategori === 'coffee') {
+                    coffee++;
+                } else if (item.kategori === 'non-coffee') {
+                    nonCoffee++;
+                } else if (item.kategori === 'makanan') {
+                    makanan++;
                 }
-                var menuData = await menuResponse2.json();
-            } else {
-                var menuData = await menuResponse.json();
-            }
-            
-            console.log('🍽️ Menu Data Received:', menuData);
-            
-            // Sembunyikan loading
-            document.getElementById('menuLoading').style.display = 'none';
-            
-            // Tampilkan data atau empty state
-            if (menuData && menuData.length > 0) {
-                document.getElementById('menuTableContainer').style.display = 'block';
-                document.getElementById('menuEmpty').style.display = 'none';
-                updateRecentMenuTable(menuData);
-            } else {
-                document.getElementById('menuTableContainer').style.display = 'none';
-                document.getElementById('menuEmpty').style.display = 'block';
-                console.log('ℹ️ Tidak ada data menu');
-            }
-            
-        } catch (error) {
-            console.error('❌ Dashboard Error:', error);
-            showDetailedError(error);
+            });
         }
+        
+        document.getElementById('totalMenu').textContent = total;
+        document.getElementById('totalCoffee').textContent = coffee;
+        document.getElementById('totalNonCoffee').textContent = nonCoffee;
+        document.getElementById('totalFood').textContent = makanan;
+        
+    } catch (error) {
+        console.error('Error calculating stats manually:', error);
+        // Set default values
+        document.getElementById('totalMenu').textContent = '0';
+        document.getElementById('totalCoffee').textContent = '0';
+        document.getElementById('totalNonCoffee').textContent = '0';
+        document.getElementById('totalFood').textContent = '0';
     }
+}
+
+// ==================== FUNGSI LOAD MENU DATA ====================
+async function loadMenuData() {
+    console.log('📋 Loading menu data...');
     
-    function showDetailedError(error) {
-        const errorHTML = `
+    try {
+        const response = await fetch('/api/menu');
+        
+        if (!response.ok) {
+            throw new Error(`Menu API error: ${response.status}`);
+        }
+        
+        const menuData = await response.json();
+        console.log('Menu data received:', menuData);
+        
+        // Hide loading
+        document.getElementById('menuLoading').style.display = 'none';
+        
+        if (menuData && menuData.length > 0) {
+            document.getElementById('menuTableContainer').style.display = 'block';
+            document.getElementById('menuEmpty').style.display = 'none';
+            updateRecentMenuTable(menuData);
+        } else {
+            document.getElementById('menuEmpty').style.display = 'block';
+            document.getElementById('menuTableContainer').style.display = 'none';
+        }
+        
+        return menuData;
+        
+    } catch (error) {
+        console.error('❌ Error loading menu data:', error);
+        
+        document.getElementById('menuLoading').innerHTML = `
             <div style="text-align: center; padding: 30px;">
-                <i class="fas fa-unlink" style="font-size: 64px; color: #e74c3c; margin-bottom: 20px;"></i>
-                <h3 style="color: #e74c3c; margin-bottom: 10px;">Koneksi API Gagal</h3>
-                <p style="color: #7f8c8d; margin-bottom: 20px;">
-                    <strong>Error:</strong> ${error.message}
-                </p>
-                
-                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
-                    <button onclick="testEndpoint('${API_BASE_URL}/api/test')" class="btn" style="background: #3498db;">
-                        <i class="fas fa-plug"></i> Test /api/test
-                    </button>
-                    <button onclick="testEndpoint('${API_BASE_URL}/health')" class="btn" style="background: #2ecc71;">
-                        <i class="fas fa-heartbeat"></i> Test /health
-                    </button>
-                    <button onclick="testEndpoint('${API_BASE_URL}/api/menu')" class="btn" style="background: #9b59b6;">
-                        <i class="fas fa-utensils"></i> Test /api/menu
-                    </button>
-                    <button onclick="loadDashboardData()" class="btn" style="background: #f39c12;">
-                        <i class="fas fa-redo"></i> Coba Lagi
-                    </button>
-                </div>
-                
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: left;">
-                    <h5><i class="fas fa-wrench"></i> Langkah Perbaikan:</h5>
-                    <ol>
-                        <li>Pastikan server backend berjalan</li>
-                        <li>Buka <a href="${API_BASE_URL}/api/test" target="_blank">${API_BASE_URL}/api/test</a> di tab baru</li>
-                        <li>Jika error, restart server dengan <code>npm start</code></li>
-                        <li>Pastikan endpoint /api/test ada di server.js</li>
-                    </ol>
-                </div>
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c; margin-bottom: 20px;"></i>
+                <h3 style="color: #e74c3c; margin-bottom: 10px;">Gagal Memuat Data Menu</h3>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">${error.message}</p>
+                <button onclick="loadDashboardData()" class="btn" style="background: #3498db;">
+                    <i class="fas fa-redo"></i> Coba Lagi
+                </button>
             </div>
         `;
         
-        document.getElementById('menuLoading').innerHTML = errorHTML;
+        throw error;
     }
+}
+
+// ==================== FUNGSI UTAMA LOAD DASHBOARD ====================
+async function loadDashboardData() {
+    console.log('🔄 Loading dashboard data...');
+    updateApiStatus('loading', 'Loading data...');
     
-    async function testEndpoint(url) {
+    try {
+        // Test koneksi dulu
+        const isConnected = await testConnection();
+        if (!isConnected) {
+            throw new Error('Cannot connect to API server');
+        }
+        
+        // Load statistik dan menu data secara paralel
+        await Promise.all([
+            loadStatistics(),
+            loadMenuData()
+        ]);
+        
+        updateApiStatus('online');
+        hideConnectionError();
+        
+    } catch (error) {
+        console.error('❌ Error loading dashboard data:', error);
+        
+        showConnectionError(error.message);
+        updateApiStatus('offline');
+        
+        // Fallback: Coba load menu data saja
         try {
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            const result = `
-                <strong>URL:</strong> ${url}<br>
-                <strong>Status:</strong> <span style="color: ${response.ok ? 'green' : 'red'}">${response.status} ${response.statusText}</span><br>
-                <strong>Response:</strong><br>
-                <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 200px; overflow: auto;">${JSON.stringify(data, null, 2)}</pre>
-            `;
-            
-            alertDialog('Test Result', result);
-            
-        } catch (error) {
-            alertDialog('Test Failed', `
-                <strong>URL:</strong> ${url}<br>
-                <strong>Error:</strong> ${error.message}<br>
-                <strong>Detail:</strong> ${error}
-            `);
+            await loadMenuData();
+        } catch (menuError) {
+            console.error('Fallback also failed:', menuError);
         }
     }
+}
+
+function updateRecentMenuTable(menus) {
+    const tbody = document.getElementById('menuTableBody');
+    tbody.innerHTML = '';
     
-    function alertDialog(title, content) {
-        const dialog = document.createElement('div');
-        dialog.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 9999; display: flex;
-            justify-content: center; align-items: center;
+    if (!Array.isArray(menus) || menus.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 30px;">
+                    <i class="fas fa-utensils" style="font-size: 48px; color: #95a5a6;"></i>
+                    <p style="color: #7f8c8d; margin-top: 10px;">Belum ada data menu</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Get last 5 items
+    const recentMenus = menus.slice(-5).reverse();
+    
+    recentMenus.forEach(menu => {
+        const row = document.createElement('tr');
+        
+        // Format harga
+        const price = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(menu.harga || 0);
+        
+        // Category badge
+        let badgeClass = 'badge-coffee';
+        let categoryText = 'Coffee';
+        
+        if (menu.kategori === 'non-coffee') {
+            badgeClass = 'badge-non-coffee';
+            categoryText = 'Non-Coffee';
+        } else if (menu.kategori === 'makanan') {
+            badgeClass = 'badge-makanan';
+            categoryText = 'Makanan';
+        }
+        
+        row.innerHTML = `
+            <td>
+                <strong>${menu.nama_menu || 'Unnamed'}</strong>
+                ${menu.deskripsi ? `<br><small class="text-muted">${menu.deskripsi.substring(0, 50)}${menu.deskripsi.length > 50 ? '...' : ''}</small>` : ''}
+            </td>
+            <td><strong>${price}</strong></td>
+            <td><span class="badge ${badgeClass}">${categoryText}</span></td>
+            <td>
+                <button onclick="editMenu(${menu.id})" class="btn btn-sm" style="background: #3498db; padding: 5px 10px;">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            </td>
         `;
         
-        dialog.innerHTML = `
-            <div style="background: white; border-radius: 10px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h4 style="margin: 0;">${title}</h4>
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 20px; cursor: pointer;">×</button>
-                </div>
-                <div>${content}</div>
-                <div style="margin-top: 15px; text-align: center;">
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="btn" style="background: #6c757d;">Tutup</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-    }
-    
-    function updateRecentMenuTable(menus) {
-        const tbody = document.getElementById('menuTableBody');
-        tbody.innerHTML = '';
-        
-        // Sort by date (newest first) and take 5
-        const recentMenus = [...menus]
-            .sort((a, b) => {
-                const dateA = new Date(a.created_at || '2000-01-01');
-                const dateB = new Date(b.created_at || '2000-01-01');
-                return dateB - dateA;
-            })
-            .slice(0, 5);
-        
-        if (recentMenus.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 30px;">
-                        <i class="fas fa-utensils" style="font-size: 48px; color: #95a5a6;"></i>
-                        <p style="color: #7f8c8d; margin-top: 10px;">Belum ada data menu</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        recentMenus.forEach(menu => {
-            const row = document.createElement('tr');
-            
-            // Format harga
-            const price = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR'
-            }).format(menu.harga || 0);
-            
-            // Format tanggal
-            let date = 'N/A';
-            if (menu.created_at) {
-                date = new Date(menu.created_at).toLocaleDateString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                });
-            }
-            
-            // Category badge
-            let badgeClass = 'badge-coffee';
-            let categoryText = menu.kategori || 'unknown';
-            
-            if (menu.kategori === 'non-coffee') {
-                badgeClass = 'badge-non-coffee';
-                categoryText = 'Non-Coffee';
-            } else if (menu.kategori === 'makanan') {
-                badgeClass = 'badge-makanan';
-                categoryText = 'Makanan';
-            } else if (menu.kategori === 'coffee') {
-                categoryText = 'Coffee';
-            }
-            
-            row.innerHTML = `
-                <td>
-                    <strong>${menu.nama_menu || 'Unnamed'}</strong>
-                    ${menu.deskripsi ? `<br><small class="text-muted">${menu.deskripsi.substring(0, 50)}${menu.deskripsi.length > 50 ? '...' : ''}</small>` : ''}
-                </td>
-                <td><strong>${price}</strong></td>
-                <td><span class="badge ${badgeClass}">${categoryText}</span></td>
-                <td>${date}</td>
-                <td>
-                    <button onclick="editMenu(${menu.id})" class="btn btn-sm" style="background: #3498db; padding: 5px 10px;">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-    }
-    
-    function editMenu(id) {
-        alert(`Edit menu ID: ${id}`);
-        window.location.href = `/admin/menu.html?edit=${id}`;
-    }
-    
-    // ==================== INITIALIZE ====================
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📊 Dashboard initialized');
-        
-        // Simple auth
-        if (!localStorage.getItem('adminAuth')) {
-            localStorage.setItem('adminAuth', JSON.stringify({
-                username: 'Admin Kopi Nusantara',
-                isLoggedIn: true,
-                role: 'admin'
-            }));
-        }
-        
-        // Set username
-        try {
-            const auth = JSON.parse(localStorage.getItem('adminAuth'));
-            document.getElementById('adminUsername').textContent = `Selamat datang, ${auth.username}`;
-        } catch (e) {
-            document.getElementById('adminUsername').textContent = 'Admin';
-        }
-        
-        // Load data
-        loadDashboardData();
-        
-        // Auto refresh
-        setInterval(loadDashboardData, 30000);
-        
-        // Logout
-        document.getElementById('logoutBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Yakin ingin logout?')) {
-                localStorage.removeItem('adminAuth');
-                window.location.href = '/login';
-            }
-        });
+        tbody.appendChild(row);
     });
+}
+
+function editMenu(id) {
+    window.location.href = `/admin/menu.html?edit=${id}`;
+}
+
+// ==================== INITIALIZE ====================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📊 Dashboard initialized');
+    console.log('📍 Current URL:', window.location.href);
+    
+    // Set username
+    try {
+        const auth = JSON.parse(localStorage.getItem('adminAuth') || '{}');
+        if (auth.username) {
+            document.getElementById('adminUsername').textContent = auth.username;
+        }
+    } catch (e) {
+        console.log('Auth data not available');
+    }
+    
+    // Load dashboard data
+    loadDashboardData();
+    
+    // Auto refresh every 30 seconds
+    setInterval(loadDashboardData, 30000);
+    
+    // Logout handler
+    document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('Yakin ingin logout?')) {
+            localStorage.removeItem('adminAuth');
+            window.location.href = '/login.html';
+        }
+    });
+    
+    // Debug button for development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const debugBtn = document.createElement('button');
+        debugBtn.innerHTML = '<i class="fas fa-bug"></i> Debug';
+        debugBtn.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 12px;
+        `;
+        debugBtn.onclick = async function() {
+            console.log('=== DEBUG INFO ===');
+            console.log('Current URL:', window.location.href);
+            
+            // Test semua endpoint
+            const endpoints = [
+                '/api/test',
+                '/api/menu',
+                '/api/menu/stats',
+                '/api/menu-statistics',
+                '/api/menu/count'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    console.log(`Testing: ${endpoint}`);
+                    const response = await fetch(endpoint);
+                    const data = await response.json();
+                    console.log(`${endpoint}:`, data);
+                } catch (error) {
+                    console.error(`${endpoint} error:`, error.message);
+                }
+            }
+        };
+        document.body.appendChild(debugBtn);
+    }
+});
+
+// Expose functions to window
+window.testConnection = testConnection;
+window.loadDashboardData = loadDashboardData;
 </script>
 </body>
 </html>

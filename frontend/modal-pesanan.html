@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesan Menu - Kopi Nusantara</title>
+    <link rel="stylesheet" href="css/modal-pesanan.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Modal Pesanan -->
+    <div class="modal-overlay" id="modalPesanan">
+        <div class="modal-pesanan">
+            <!-- Loading Overlay -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Memproses pesanan...</div>
+            </div>
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h2><i class="fas fa-mug-hot"></i> Pesan Menu Kopi</h2>
+                <button class="close-modal" onclick="closePesananModal()" aria-label="Tutup">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <!-- Menu Information -->
+                <div class="menu-info">
+                    <h3 id="modalMenuName">Nama Menu</h3>
+                    <div class="menu-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Kategori</span>
+                            <span class="detail-value" id="modalMenuCategory">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value available" id="modalMenuStatus">
+                                <i class="fas fa-check-circle"></i> Tersedia
+                            </span>
+                        </div>
+                    </div>
+                    <div class="price-tag" id="modalMenuPrice">Rp 0</div>
+                </div>
+
+                <!-- Quantity Selection -->
+                <div class="form-section quantity-section">
+                    <h4><i class="fas fa-calculator"></i> Jumlah Pesanan</h4>
+                    <div class="quantity-selector">
+                        <button type="button" class="quantity-btn" onclick="decreaseQuantity()" id="decreaseBtn" aria-label="Kurangi jumlah">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <div class="quantity-value" id="quantityValue">1</div>
+                        <button type="button" class="quantity-btn" onclick="increaseQuantity()" id="increaseBtn" aria-label="Tambah jumlah">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="quantity-limit">
+                        Minimum 1, Maksimum 10 item
+                    </div>
+                </div>
+
+                <!-- Customer Information Form -->
+                <form id="pesananForm" novalidate>
+                    <!-- Customer Details -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-user"></i> Informasi Pelanggan</h4>
+                        
+                        <div class="input-with-icon form-group">
+                            <i class="fas fa-user-circle"></i>
+                            <input type="text" 
+                                   id="customerName" 
+                                   class="form-control" 
+                                   placeholder="Nama lengkap" 
+                                   required
+                                   aria-label="Nama lengkap">
+                            <div class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Masukkan nama lengkap sesuai identitas
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="input-with-icon form-group">
+                                <i class="fas fa-phone"></i>
+                                <input type="tel" 
+                                       id="customerPhone" 
+                                       class="form-control" 
+                                       placeholder="0812-3456-7890" 
+                                       required
+                                       pattern="[0-9]{10,13}"
+                                       aria-label="Nomor telepon">
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Contoh: 081234567890
+                                </div>
+                            </div>
+                            
+                            <div class="input-with-icon form-group">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" 
+                                       id="customerEmail" 
+                                       class="form-control" 
+                                       placeholder="nama@email.com"
+                                       aria-label="Alamat email (opsional)">
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Opsional, untuk notifikasi
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Type -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-shopping-bag"></i> Tipe Pesanan</h4>
+                        <div class="order-type-options">
+                            <button type="button" 
+                                    class="order-type-btn" 
+                                    data-value="dine-in"
+                                    onclick="selectOrderType('dine-in')">
+                                <div class="order-type-icon">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                                <div class="order-type-name">Dine In</div>
+                                <div class="order-type-time">Makan di tempat</div>
+                            </button>
+                            
+                            <button type="button" 
+                                    class="order-type-btn" 
+                                    data-value="takeaway"
+                                    onclick="selectOrderType('takeaway')">
+                                <div class="order-type-icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="order-type-name">Takeaway</div>
+                                <div class="order-type-time">Bungkus</div>
+                            </button>
+                            
+                            <button type="button" 
+                                    class="order-type-btn" 
+                                    data-value="delivery"
+                                    onclick="selectOrderType('delivery')">
+                                <div class="order-type-icon">
+                                    <i class="fas fa-motorcycle"></i>
+                                </div>
+                                <div class="order-type-name">Delivery</div>
+                                <div class="order-type-time">Antar</div>
+                            </button>
+                        </div>
+                        <input type="hidden" id="orderType" required>
+                    </div>
+
+                    <!-- Address Field (for delivery) -->
+                    <div class="form-section address-field" id="addressField">
+                        <h4><i class="fas fa-map-marker-alt"></i> Alamat Pengiriman</h4>
+                        <div class="form-group">
+                            <textarea id="customerAddress" 
+                                      class="form-control" 
+                                      placeholder="Masukkan alamat lengkap untuk pengiriman"
+                                      rows="3"
+                                      aria-label="Alamat pengiriman"></textarea>
+                            <div class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Cantumkan: jalan, nomor rumah, RT/RW, kecamatan, kota, kode pos
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-credit-card"></i> Metode Pembayaran</h4>
+                        <div class="payment-options">
+                            <div class="payment-option" onclick="selectPaymentMethod('cash')">
+                                <div class="payment-icon">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div class="payment-details">
+                                    <h5>Tunai (Cash)</h5>
+                                    <p>Bayar di kasir saat pickup</p>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-option" onclick="selectPaymentMethod('transfer')">
+                                <div class="payment-icon">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="payment-details">
+                                    <h5>Transfer Bank</h5>
+                                    <p>BCA/Mandiri/BNI/BRI</p>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-option" onclick="selectPaymentMethod('e-wallet')">
+                                <div class="payment-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <div class="payment-details">
+                                    <h5>E-Wallet</h5>
+                                    <p>OVO/GoPay/Dana/ShopeePay</p>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-option" onclick="selectPaymentMethod('credit-card')">
+                                <div class="payment-icon">
+                                    <i class="fas fa-credit-card"></i>
+                                </div>
+                                <div class="payment-details">
+                                    <h5>Kartu Kredit</h5>
+                                    <p>Visa/Mastercard/JCB</p>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="paymentMethod" required>
+                    </div>
+
+                    <!-- Order Notes -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-sticky-note"></i> Catatan Tambahan</h4>
+                        <div class="form-group">
+                            <textarea id="orderNote" 
+                                      class="form-control" 
+                                      placeholder="Contoh: Kurangi gula, tambah es, tanpa bawang, dll."
+                                      rows="3"
+                                      aria-label="Catatan pesanan"></textarea>
+                            <div class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Opsional, untuk permintaan khusus
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="order-summary">
+                        <h4><i class="fas fa-receipt"></i> Ringkasan Pesanan</h4>
+                        <div class="summary-row">
+                            <span class="summary-label">Subtotal</span>
+                            <span class="summary-value" id="summarySubtotal">Rp 0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Jumlah Item</span>
+                            <span class="summary-value" id="summaryQuantity">1</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span class="summary-label">Total Bayar</span>
+                            <span class="summary-value total" id="summaryTotal">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary" onclick="closePesananModal()">
+                            <i class="fas fa-times"></i> Batal
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-paper-plane"></i> Pesan Sekarang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="successMessage">
+        <div class="success-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        <h3 class="success-title">Pesanan Berhasil!</h3>
+        <p class="success-text" id="successText">
+            Pesanan Anda telah berhasil dibuat dan ditambahkan ke keranjang.
+        </p>
+        <button class="success-btn" onclick="redirectToCart()">
+            <i class="fas fa-shopping-cart"></i> Lihat Keranjang
+        </button>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="notification-message" id="notificationMessage"></div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let currentMenu = null;
+        let quantity = 1;
+        const minQuantity = 1;
+        const maxQuantity = 10;
+        let selectedOrderType = '';
+        let selectedPaymentMethod = '';
+
+        // ===== MODAL FUNCTIONS =====
+        function openPesananModal(menu) {
+            console.log('🚀 Membuka modal untuk:', menu);
+            
+            currentMenu = menu;
+            quantity = 1;
+            selectedOrderType = '';
+            selectedPaymentMethod = '';
+            
+            // Update menu info
+            document.getElementById('modalMenuName').textContent = menu.nama_menu || 'Menu';
+            document.getElementById('modalMenuPrice').textContent = formatCurrency(menu.harga || 0);
+            document.getElementById('modalMenuCategory').textContent = formatCategory(menu.kategori || 'unknown');
+            
+            // Reset form
+            resetForm();
+            
+            // Update UI
+            updateQuantity();
+            updateOrderTypeButtons();
+            updatePaymentOptions();
+            updateSummary();
+            
+            // Show modal
+            document.getElementById('modalPesanan').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // Hide address field
+            document.getElementById('addressField').classList.remove('show');
+        }
+
+        function closePesananModal() {
+            document.getElementById('modalPesanan').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentMenu = null;
+            quantity = 1;
+            resetForm();
+        }
+
+        function resetForm() {
+            // Reset form fields
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerPhone').value = '';
+            document.getElementById('customerEmail').value = '';
+            document.getElementById('customerAddress').value = '';
+            document.getElementById('orderNote').value = '';
+            document.getElementById('orderType').value = '';
+            document.getElementById('paymentMethod').value = '';
+            
+            // Reset validation
+            resetValidation();
+        }
+
+        // ===== QUANTITY FUNCTIONS =====
+        function increaseQuantity() {
+            if (quantity < maxQuantity) {
+                quantity++;
+                updateQuantity();
+                updateSummary();
+            }
+        }
+
+        function decreaseQuantity() {
+            if (quantity > minQuantity) {
+                quantity--;
+                updateQuantity();
+                updateSummary();
+            }
+        }
+
+        function updateQuantity() {
+            document.getElementById('quantityValue').textContent = quantity;
+            document.getElementById('summaryQuantity').textContent = `${quantity} item`;
+            
+            // Update buttons
+            document.getElementById('decreaseBtn').disabled = quantity <= minQuantity;
+            document.getElementById('increaseBtn').disabled = quantity >= maxQuantity;
+            
+            // Button styling
+            const decBtn = document.getElementById('decreaseBtn');
+            const incBtn = document.getElementById('increaseBtn');
+            
+            if (quantity <= minQuantity) {
+                decBtn.style.opacity = '0.4';
+                decBtn.style.cursor = 'not-allowed';
+            } else {
+                decBtn.style.opacity = '1';
+                decBtn.style.cursor = 'pointer';
+            }
+            
+            if (quantity >= maxQuantity) {
+                incBtn.style.opacity = '0.4';
+                incBtn.style.cursor = 'not-allowed';
+            } else {
+                incBtn.style.opacity = '1';
+                incBtn.style.cursor = 'pointer';
+            }
+        }
+
+        // ===== ORDER TYPE FUNCTIONS =====
+        function selectOrderType(type) {
+            selectedOrderType = type;
+            document.getElementById('orderType').value = type;
+            
+            // Update buttons
+            updateOrderTypeButtons();
+            
+            // Show/hide address field
+            const addressField = document.getElementById('addressField');
+            if (type === 'delivery') {
+                addressField.classList.add('show');
+                document.getElementById('customerAddress').required = true;
+            } else {
+                addressField.classList.remove('show');
+                document.getElementById('customerAddress').required = false;
+            }
+        }
+
+        function updateOrderTypeButtons() {
+            const buttons = document.querySelectorAll('.order-type-btn');
+            buttons.forEach(btn => {
+                if (btn.dataset.value === selectedOrderType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // ===== PAYMENT METHOD FUNCTIONS =====
+        function selectPaymentMethod(method) {
+            selectedPaymentMethod = method;
+            document.getElementById('paymentMethod').value = method;
+            updatePaymentOptions();
+        }
+
+        function updatePaymentOptions() {
+            const options = document.querySelectorAll('.payment-option');
+            options.forEach(option => {
+                if (option.onclick.toString().includes(`'${selectedPaymentMethod}'`)) {
+                    option.classList.add('active');
+                } else {
+                    option.classList.remove('active');
+                }
+            });
+        }
+
+        // ===== ORDER SUMMARY FUNCTIONS =====
+        function updateSummary() {
+            if (!currentMenu) return;
+            
+            const price = currentMenu.harga || 0;
+            const subtotal = price * quantity;
+            
+            document.getElementById('summarySubtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('summaryTotal').textContent = formatCurrency(subtotal);
+        }
+
+        // ===== VALIDATION FUNCTIONS =====
+        function validateForm() {
+            let isValid = true;
+            
+            // Reset previous errors
+            resetValidation();
+            
+            // Validate required fields
+            const requiredFields = [
+                { id: 'customerName', message: 'Nama lengkap wajib diisi' },
+                { id: 'customerPhone', message: 'Nomor telepon wajib diisi' },
+                { id: 'orderType', message: 'Pilih tipe pesanan' },
+                { id: 'paymentMethod', message: 'Pilih metode pembayaran' }
+            ];
+            
+            requiredFields.forEach(field => {
+                const input = document.getElementById(field.id);
+                if (!input.value.trim()) {
+                    showFieldError(field.id, field.message);
+                    isValid = false;
+                }
+            });
+            
+            // Special validation for delivery
+            if (selectedOrderType === 'delivery') {
+                const address = document.getElementById('customerAddress').value.trim();
+                if (!address) {
+                    showFieldError('customerAddress', 'Alamat pengiriman wajib diisi untuk pesanan delivery');
+                    isValid = false;
+                }
+            }
+            
+            // Validate phone format
+            const phone = document.getElementById('customerPhone').value.trim();
+            const phoneRegex = /^[0-9]{10,13}$/;
+            if (phone && !phoneRegex.test(phone.replace(/[-\s]/g, ''))) {
+                showFieldError('customerPhone', 'Format nomor telepon tidak valid');
+                isValid = false;
+            }
+            
+            // Validate email if provided
+            const email = document.getElementById('customerEmail').value.trim();
+            if (email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showFieldError('customerEmail', 'Format email tidak valid');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            field.classList.add('error');
+            
+            // Create error message element
+            let errorEl = field.nextElementSibling;
+            if (!errorEl || !errorEl.classList.contains('error-message')) {
+                errorEl = document.createElement('div');
+                errorEl.className = 'error-message';
+                field.parentNode.insertBefore(errorEl, field.nextSibling);
+            }
+            
+            errorEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            errorEl.style.display = 'flex';
+        }
+
+        function resetValidation() {
+            // Remove error classes
+            document.querySelectorAll('.form-control.error').forEach(el => {
+                el.classList.remove('error');
+            });
+            
+            // Hide error messages
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        // ===== FORMATTING FUNCTIONS =====
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function formatCategory(category) {
+            const categories = {
+                'coffee': 'Kopi',
+                'non-coffee': 'Non-Kopi',
+                'makanan': 'Makanan'
+            };
+            return categories[category] || category;
+        }
+
+        // ===== NOTIFICATION FUNCTIONS =====
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const messageEl = document.getElementById('notificationMessage');
+            const iconEl = notification.querySelector('.notification-icon i');
+            
+            // Set type
+            notification.className = `notification ${type}`;
+            
+            // Set icon based on type
+            switch(type) {
+                case 'success':
+                    iconEl.className = 'fas fa-check-circle';
+                    break;
+                case 'error':
+                    iconEl.className = 'fas fa-exclamation-circle';
+                    break;
+                case 'warning':
+                    iconEl.className = 'fas fa-exclamation-triangle';
+                    break;
+                case 'info':
+                    iconEl.className = 'fas fa-info-circle';
+                    break;
+            }
+            
+            // Set message
+            messageEl.textContent = message;
+            
+            // Show notification
+            notification.classList.add('show');
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        // ===== ORDER PROCESSING FUNCTIONS =====
+        async function processOrder() {
+            if (!validateForm()) {
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingOverlay').classList.add('active');
+            document.getElementById('submitBtn').disabled = true;
+            
+            try {
+                // Prepare order data
+                const orderData = {
+                    menu_id: currentMenu.id,
+                    menu_name: currentMenu.nama_menu,
+                    menu_price: currentMenu.harga,
+                    quantity: quantity,
+                    customer_name: document.getElementById('customerName').value.trim(),
+                    customer_phone: document.getElementById('customerPhone').value.trim(),
+                    customer_email: document.getElementById('customerEmail').value.trim(),
+                    customer_address: document.getElementById('customerAddress').value.trim(),
+                    order_type: selectedOrderType,
+                    payment_method: selectedPaymentMethod,
+                    order_note: document.getElementById('orderNote').value.trim(),
+                    total_amount: currentMenu.harga * quantity,
+                    status: 'pending',
+                    order_date: new Date().toISOString(),
+                    order_number: 'ORD-' + Date.now().toString().substr(-8)
+                };
+                
+                console.log('📦 Order data:', orderData);
+                
+                // Save to localStorage
+                saveOrderToLocalStorage(orderData);
+                
+                // Add to cart
+                addToCart(currentMenu, quantity);
+                
+                // Simulate API call
+                await simulateAPICall();
+                
+                // Show success message
+                showSuccessMessage(orderData);
+                
+            } catch (error) {
+                console.error('❌ Error processing order:', error);
+                showNotification('Terjadi kesalahan saat memproses pesanan', 'error');
+            } finally {
+                // Hide loading
+                document.getElementById('loadingOverlay').classList.remove('active');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+
+        function saveOrderToLocalStorage(orderData) {
+            try {
+                const existingOrders = JSON.parse(localStorage.getItem('customer_orders')) || [];
+                
+                const newOrder = {
+                    ...orderData,
+                    id: Date.now(),
+                    created_at: new Date().toISOString()
+                };
+                
+                existingOrders.push(newOrder);
+                localStorage.setItem('customer_orders', JSON.stringify(existingOrders));
+                
+                console.log('💾 Order saved to localStorage:', newOrder);
+                return newOrder;
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+                throw error;
+            }
+        }
+
+        function addToCart(menu, quantity) {
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            
+            const existingIndex = cart.findIndex(item => item.id === menu.id);
+            
+            if (existingIndex !== -1) {
+                cart[existingIndex].quantity += quantity;
+            } else {
+                cart.push({
+                    id: menu.id,
+                    name: menu.nama_menu,
+                    price: menu.harga,
+                    image: menu.gambar,
+                    quantity: quantity,
+                    category: menu.kategori
+                });
+            }
+            
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartCounter();
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        }
+
+        function updateCartCounter() {
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            // Update navbar counter
+            const navCounter = document.getElementById('cart-counter');
+            if (navCounter) {
+                navCounter.textContent = totalItems;
+                navCounter.style.display = totalItems > 0 ? 'inline-flex' : 'none';
+            }
+            
+            // Update floating counter
+            const floatingCounter = document.getElementById('floating-cart-counter');
+            if (floatingCounter) {
+                floatingCounter.textContent = totalItems;
+                floatingCounter.style.display = totalItems > 0 ? 'flex' : 'none';
+            }
+        }
+
+        async function simulateAPICall() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({ success: true, message: 'Order created successfully' });
+                }, 1500);
+            });
+        }
+
+        function showSuccessMessage(orderData) {
+            const successMessage = document.getElementById('successMessage');
+            const successText = document.getElementById('successText');
+            
+            // Update success message
+            successText.textContent = `Pesanan ${orderData.menu_name} (${orderData.quantity}x) berhasil dibuat. Total: ${formatCurrency(orderData.total_amount)}`;
+            
+            // Show success message
+            successMessage.style.display = 'block';
+            
+            // Close modal
+            closePesananModal();
+        }
+
+        function redirectToCart() {
+            document.getElementById('successMessage').style.display = 'none';
+            window.location.href = 'cart.html';
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.getElementById('pesananForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            processOrder();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('modalPesanan').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePesananModal();
+            }
+        });
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('modalPesanan').classList.contains('active')) {
+                closePesananModal();
+            }
+        });
+
+        // Real-time validation
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('input', function() {
+                this.classList.remove('error');
+                const errorMsg = this.nextElementSibling;
+                if (errorMsg && errorMsg.classList.contains('error-message')) {
+                    errorMsg.style.display = 'none';
+                }
+                
+                // Add success class for valid inputs
+                if (this.value.trim() && this.checkValidity()) {
+                    this.classList.add('success');
+                } else {
+                    this.classList.remove('success');
+                }
+            });
+        });
+
+        // Initialize cart counter
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCartCounter();
+        });
+    </script>
+</body>
+</html>

@@ -145,12 +145,18 @@
 
             <div class="content">
                 <!-- Action Bar -->
-                <div class="action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>Daftar Menu</h2>
-                    <button id="btnTambahMenu" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Tambah Menu Baru
-                    </button>
-                </div>
+                <!-- Action Bar -->
+<div class="action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="margin: 0; color: #2c3e50; font-size: 1.8rem; font-weight: 600;">Daftar Menu</h2>
+        <p style="margin: 5px 0 0 0; color: #7f8c8d; font-size: 0.95rem;">Kelola semua menu makanan dan minuman</p>
+    </div>
+    <button id="btnTambahMenu" class="btn-tambah-menu" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; border: none; border-radius: 10px; padding: 14px 28px; cursor: pointer; font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); transition: all 0.3s ease; position: relative; overflow: hidden;">
+        <i class="fas fa-plus" style="font-size: 1.1rem;"></i>
+        <span>Tambah Menu Baru</span>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.1); transform: translateX(-100%); transition: transform 0.3s ease;"></div>
+    </button>
+</div>
 
                 <!-- Loading & Error -->
                 <div id="loading" class="loading">

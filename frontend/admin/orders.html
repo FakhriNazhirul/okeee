@@ -2,51 +2,1905 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Daftar Pesanan - Kopi Nusantara</title>
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body onload="checkAuth(); loadOrders();">
-    <nav class="navbar">
-        <div class="navbar-container">
-            <p>Admin Kopi Nusantara</p>
-            <ul>
-                <li><a href="dashboard.html">Menu</a></li>
-                <li><a href="orders.html">Pesanan</a></li>
-                <li><a href="#" onclick="handleLogout()">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <main style="padding: 20px;">
-        <h2>Pesanan Masuk</h2>
-        <div id="ordersContainer">
-            </div>
-    </main>
-
-    <script src="../js/api.js"></script>
-    <script src="../js/auth.js"></script>
-    <script>
-        async function loadOrders() {
-            try {
-                // Catatan: Pastikan Anda sudah membuat endpoint GET /api/orders di backend
-                const response = await apiRequest('/orders'); 
-                const container = document.getElementById('ordersContainer');
-                container.innerHTML = '';
-
-                response.data.forEach(order => {
-                    // Menggunakan format data dari orderSchema (customer.name, formattedTotal, status)
-                    container.innerHTML += `
-                        <div class="order-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px;">
-                            <p><strong>No. Pesanan:</strong> ${order.orderNumber}</p>
-                            <p><strong>Pelanggan:</strong> ${order.customer.name}</p>
-                            <p><strong>Total:</strong> ${order.formattedTotal}</p>
-                            <p><strong>Status:</strong> <span class="badge">${order.status}</span></p>
-                            <p><strong>Tipe:</strong> ${order.orderType}</p>
-                        </div>`;
-                });
-            } catch (err) {
-                document.getElementById('ordersContainer').innerHTML = "<p>Gagal memuat pesanan. Pastikan MongoDB terhubung.</p>";
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Pesanan - Kopi Nusantara</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* CSS TIDAK DIUBAH - SAMA DENGAN SEBELUMNYA */
+        /* ============================================
+           ADMIN ORDERS SPECIFIC STYLES
+           ============================================ */
+        
+        /* Main Admin Container */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+            background: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Sidebar */
+        .admin-sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+            color: white;
+            box-shadow: 3px 0 20px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: white;
+        }
+        
+        .sidebar-header p {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            color: #adb5bd;
+        }
+        
+        .sidebar-nav {
+            padding: 25px 0;
+        }
+        
+        .nav-item {
+            margin: 5px 15px;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 20px;
+            color: #dee2e6;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .nav-link.active {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+        }
+        
+        .nav-link i {
+            width: 22px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        /* Main Content */
+        .admin-main {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+        
+        .admin-header {
+            background: white;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .admin-header h1 {
+            font-size: 1.6rem;
+            color: #2c3e50;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .admin-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .admin-user span {
+            font-weight: 500;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+        
+        .admin-user .badge {
+            background: #17a2b8;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        /* Content Area */
+        .content {
+            padding: 30px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #8B4513, #A0522D);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card i {
+            font-size: 32px;
+            margin-bottom: 15px;
+            color: #8B4513;
+        }
+        
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: #2c3e50;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+        
+        .filter-section h3 {
+            margin: 0 0 25px 0;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 12px 18px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #495057;
+        }
+        
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #8B4513;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        /* Order Cards */
+        .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .order-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #28a745;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .order-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #28a745, #20c997);
+        }
+        
+        .order-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .order-header h3 {
+            color: #2c3e50;
+            font-size: 1.25rem;
+            margin: 0 0 8px 0;
+            font-weight: 600;
+        }
+        
+        .order-header .order-date {
+            color: #6c757d;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .order-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .customer-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .customer-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .customer-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .customer-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+        
+        .customer-value {
+            color: #6c757d;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+        
+        .order-items {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        .order-item:not(:last-child) {
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .item-details {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .item-meta {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .item-total {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .order-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .order-total {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.2);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 69, 19, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
+        }
+        
+        .btn-info:hover {
+            background: linear-gradient(135deg, #138496 0%, #17a2b8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(23, 162, 184, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333 0%, #dc3545 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
+        }
+        
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+        
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin: 20px 0;
+        }
+        
+        .loading-state i {
+            font-size: 48px;
+            color: #8B4513;
+            margin-bottom: 20px;
+            animation: spin 1.5s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-state p {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin: 20px 0;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            color: #dee2e6;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            color: #6c757d;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .empty-state p {
+            color: #adb5bd;
+            margin-bottom: 25px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        
+        /* Error State */
+        .error-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: #fff8f8;
+            border-radius: 12px;
+            border: 1px solid #f5c6cb;
+            margin: 20px 0;
+        }
+        
+        .error-state i {
+            font-size: 48px;
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+        
+        .error-state h3 {
+            color: #721c24;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .error-state p {
+            color: #721c24;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 10000;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .notification.error {
+            border-left-color: #f44336;
+        }
+        
+        .notification.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .notification.info {
+            border-left-color: #2196F3;
+        }
+        
+        /* TAMBAHAN CSS UNTUK STATUS PEMBAYARAN */
+        .status-paid {
+            background: #d4edda !important;
+            color: #155724 !important;
+            border: 1px solid #c3e6cb !important;
+        }
+        
+        .status-pending {
+            background: #fff3cd !important;
+            color: #856404 !important;
+            border: 1px solid #ffeaa7 !important;
+        }
+        
+        /* TAMBAHAN CSS UNTUK TOMBOL PEMBAYARAN */
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838 0%, #28a745 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+        }
+        
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e0a800 0%, #ffc107 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.3);
+        }
+        
+        /* Styling khusus untuk statistik */
+        .stat-card:nth-child(1) .stat-number {
+            color: #8B4513;
+        }
+        
+        .stat-card:nth-child(2) .stat-number {
+            color: #28a745;
+        }
+        
+        .stat-card:nth-child(3) .stat-number {
+            color: #17a2b8;
+        }
+        
+        .stat-card:nth-child(4) .stat-number {
+            color: #6f42c1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .admin-sidebar {
+                width: 250px;
             }
+            
+            .admin-main {
+                margin-left: 250px;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .admin-container {
+                flex-direction: column;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            
+            .admin-main {
+                margin-left: 0;
+            }
+            
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 15px;
+                gap: 10px;
+            }
+            
+            .nav-item {
+                margin: 0;
+            }
+            
+            .nav-link {
+                white-space: nowrap;
+                padding: 12px 20px;
+            }
+            
+            .admin-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                text-align: center;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .order-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .order-footer {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .order-actions {
+                justify-content: center;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-buttons {
+                flex-direction: column;
+            }
+            
+            .order-card {
+                padding: 20px;
+            }
+            
+            .customer-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .customer-value {
+                max-width: 100%;
+                text-align: left;
+            }
+            
+            .empty-state,
+            .loading-state {
+                padding: 40px 20px;
+            }
+            
+            .empty-state i,
+            .loading-state i {
+                font-size: 36px;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .admin-sidebar,
+            .admin-header,
+            .filter-section,
+            .order-actions {
+                display: none !important;
+            }
+            
+            .admin-main {
+                margin-left: 0;
+            }
+            
+            .order-card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-coffee"></i> Kopi Nusantara</h2>
+                <p>Admin Panel</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item">
+                    <a href="/admin/dashboard.html" class="nav-link">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                
+                <div class="nav-item">
+                    <a href="/admin/menu.html" class="nav-link">
+                        <i class="fas fa-utensils"></i>
+                        <span>Kelola Menu</span>
+                    </a>
+                </div>
+                
+                <div class="nav-item">
+                    <a href="/admin/orders.html" class="nav-link active">
+                        <i class="fas fa-receipt"></i>
+                        <span>Pesanan</span>
+                    </a>
+                </div>
+                
+                <div class="nav-item">
+                    <a href="/" target="_blank" class="nav-link">
+                        <i class="fas fa-external-link-alt"></i>
+                        <span>Lihat Website</span>
+                    </a>
+                </div>
+                
+                <div class="nav-item">
+                    <a href="#" id="logoutBtn" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-main">
+            <!-- Header -->
+            <header class="admin-header">
+                <h1><i class="fas fa-receipt"></i> Kelola Pesanan</h1>
+                <div class="admin-user">
+                    <span id="adminUsername">Administrator</span>
+                    <span class="badge">Admin</span>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-shopping-cart"></i>
+                        <div class="stat-number" id="totalOrders">0</div>
+                        <div class="stat-label">Total Pesanan</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <div class="stat-number" id="totalRevenue">Rp 0</div>
+                        <div class="stat-label">Total Pendapatan</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-day"></i>
+                        <div class="stat-number" id="totalDays">0</div>
+                        <div class="stat-label">Hari Beroperasi</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-clock"></i>
+                        <div class="stat-number" id="lastOrder">-</div>
+                        <div class="stat-label">Transaksi Terakhir</div>
+                    </div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="filter-section">
+                    <h3><i class="fas fa-filter"></i> Filter Pesanan</h3>
+                    
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filterDate">
+                                <i class="fas fa-calendar"></i> Tanggal Pesanan
+                            </label>
+                            <input type="date" id="filterDate">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterCustomer">
+                                <i class="fas fa-user"></i> Nama Pelanggan
+                            </label>
+                            <input type="text" id="filterCustomer" placeholder="Cari nama pelanggan...">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterMenu">
+                                <i class="fas fa-utensils"></i> Nama Menu
+                            </label>
+                            <input type="text" id="filterMenu" placeholder="Cari nama menu...">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filterPaymentStatus">
+                                <i class="fas fa-credit-card"></i> Status Pembayaran
+                            </label>
+                            <select id="filterPaymentStatus">
+                                <option value="">Semua Status</option>
+                                <option value="dibayar">Sudah Dibayar</option>
+                                <option value="belum">Belum Dibayar</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-buttons">
+                        <button id="btnApplyFilter" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Terapkan Filter
+                        </button>
+                        <button id="btnResetFilter" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Reset Filter
+                        </button>
+                        <button id="btnRefresh" class="btn btn-info">
+                            <i class="fas fa-sync-alt"></i> Refresh Data
+                        </button>
+                        <button id="btnPrint" class="btn btn-secondary">
+                            <i class="fas fa-print"></i> Cetak Laporan
+                        </button>
+                        <button id="btnExport" class="btn btn-success">
+                            <i class="fas fa-file-export"></i> Export Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Memuat data pesanan...</p>
+                </div>
+
+                <!-- Orders List -->
+                <div id="ordersContainer" class="orders-list" style="display: none;">
+                    <!-- Orders will be loaded here by JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i class="fas fa-receipt"></i>
+                    <h3>Belum Ada Pesanan</h3>
+                    <p>Belum ada pesanan yang tercatat. Pesanan dari pelanggan akan muncul di sini.</p>
+                    <button class="btn btn-primary" onclick="loadOrders()">
+                        <i class="fas fa-redo"></i> Refresh
+                    </button>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="error-state" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Gagal Memuat Data</h3>
+                    <p>Terjadi kesalahan saat memuat data pesanan. Silakan coba lagi.</p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Muat Ulang Halaman
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // ============ VARIABEL GLOBAL ============
+        let allOrders = []; // Menyimpan semua data pesanan
+        let currentFilters = {}; // Menyimpan filter saat ini
+
+        // ============ INISIALISASI HALAMAN ============
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 Orders page loaded');
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            
+            // Load initial data
+            setTimeout(() => {
+                loadOrders();
+            }, 500);
+            
+            // Setup admin username
+            try {
+                const auth = JSON.parse(localStorage.getItem('adminAuth') || '{}');
+                if (auth.username) {
+                    document.getElementById('adminUsername').textContent = auth.username;
+                }
+            } catch (e) {
+                console.log('No auth data found');
+            }
+            
+            // ============ SETUP EVENT LISTENERS ============
+            // Apply Filter
+            document.getElementById('btnApplyFilter').addEventListener('click', function() {
+                applyFilters();
+            });
+            
+            // Reset Filter
+            document.getElementById('btnResetFilter').addEventListener('click', function() {
+                resetFilters();
+            });
+            
+            // Refresh Data
+            document.getElementById('btnRefresh').addEventListener('click', function() {
+                loadOrders();
+            });
+            
+            // Print Report
+            document.getElementById('btnPrint').addEventListener('click', function() {
+                window.print();
+            });
+            
+            // Export Data
+            document.getElementById('btnExport').addEventListener('click', function() {
+                exportToExcel();
+            });
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('adminAuth');
+                    window.location.href = '/login.html';
+                }
+            });
+            
+            // Auto-refresh every 60 seconds
+            setInterval(() => {
+                loadOrders();
+            }, 60000);
+            
+            // Enter key untuk filter
+            document.getElementById('filterCustomer').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+            
+            document.getElementById('filterMenu').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+        });
+        
+        // ============ FUNGSI UTILITY ============
+        function formatCurrency(amount) {
+            const num = parseFloat(amount) || 0;
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(num);
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                return date.toLocaleString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        function showNotification(message, type = 'success') {
+            // Hapus notifikasi lama jika ada
+            const oldNotification = document.querySelector('.notification');
+            if (oldNotification) oldNotification.remove();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(150%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // ============ FUNGSI LOAD DATA ============
+        window.loadOrders = async function(filters = {}) {
+            console.log('📋 Loading orders with filters:', filters);
+            
+            const loadingEl = document.getElementById('loadingState');
+            const ordersEl = document.getElementById('ordersContainer');
+            const emptyEl = document.getElementById('emptyState');
+            const errorEl = document.getElementById('errorState');
+            
+            // Show loading
+            loadingEl.style.display = 'block';
+            ordersEl.style.display = 'none';
+            emptyEl.style.display = 'none';
+            errorEl.style.display = 'none';
+            
+            try {
+                // Simulasi data untuk testing (hapus jika sudah ada API)
+                if (!window.hasOwnProperty('fetch')) {
+                    await loadMockData();
+                    loadingEl.style.display = 'none';
+                    return;
+                }
+                
+                // Build API URL with filters
+                let url = '/api/orders';
+                const params = new URLSearchParams();
+                
+                if (filters.date) params.append('date', filters.date);
+                if (filters.customer) params.append('customer', filters.customer);
+                if (filters.menu) params.append('menu', filters.menu);
+                if (filters.payment_status) params.append('payment_status', filters.payment_status);
+                
+                const queryString = params.toString();
+                if (queryString) {
+                    url = `/api/orders/filter?${queryString}`;
+                }
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'Failed to load orders');
+                }
+                
+                // Simpan semua data
+                allOrders = result.data || [];
+                
+                // Update statistik
+                updateStatistics(allOrders);
+                
+                // Terapkan filter jika ada
+                const filteredOrders = applyCurrentFilters(allOrders);
+                
+                // Hide loading
+                loadingEl.style.display = 'none';
+                
+                // Display orders
+                if (filteredOrders && filteredOrders.length > 0) {
+                    displayOrders(filteredOrders);
+                    ordersEl.style.display = 'block';
+                } else {
+                    emptyEl.style.display = 'block';
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading orders:', error);
+                
+                // Fallback ke data mock
+                try {
+                    await loadMockData();
+                    loadingEl.style.display = 'none';
+                } catch (mockError) {
+                    console.error('Mock data error:', mockError);
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'block';
+                }
+            }
+        };
+        
+        // ============ FUNGSI FILTER ============
+        function applyFilters() {
+            const date = document.getElementById('filterDate').value;
+            const customer = document.getElementById('filterCustomer').value.trim();
+            const menu = document.getElementById('filterMenu').value.trim();
+            const paymentStatus = document.getElementById('filterPaymentStatus').value;
+            
+            currentFilters = {
+                date: date || null,
+                customer: customer || null,
+                menu: menu || null,
+                payment_status: paymentStatus || null
+            };
+            
+            console.log('🔍 Applying filters:', currentFilters);
+            
+            // Terapkan filter ke data yang sudah dimuat
+            if (allOrders.length > 0) {
+                const filteredOrders = applyCurrentFilters(allOrders);
+                updateStatistics(filteredOrders);
+                displayOrders(filteredOrders);
+                
+                // Update UI
+                const ordersEl = document.getElementById('ordersContainer');
+                const emptyEl = document.getElementById('emptyState');
+                
+                if (filteredOrders.length > 0) {
+                    ordersEl.style.display = 'block';
+                    emptyEl.style.display = 'none';
+                    showNotification(`Menampilkan ${filteredOrders.length} pesanan`, 'info');
+                } else {
+                    ordersEl.style.display = 'none';
+                    emptyEl.style.display = 'block';
+                    showNotification('Tidak ada pesanan yang sesuai dengan filter', 'warning');
+                }
+            } else {
+                // Jika belum ada data, load dengan filter
+                loadOrders(currentFilters);
+            }
+        }
+        
+        function applyCurrentFilters(orders) {
+            if (!orders || orders.length === 0) return [];
+            
+            let filtered = [...orders];
+            
+            // Filter berdasarkan tanggal
+            if (currentFilters.date) {
+                const filterDate = new Date(currentFilters.date).toDateString();
+                filtered = filtered.filter(order => {
+                    const orderDate = new Date(order.order_date).toDateString();
+                    return orderDate === filterDate;
+                });
+            }
+            
+            // Filter berdasarkan nama pelanggan
+            if (currentFilters.customer) {
+                const searchTerm = currentFilters.customer.toLowerCase();
+                filtered = filtered.filter(order => 
+                    order.customer_name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Filter berdasarkan nama menu
+            if (currentFilters.menu) {
+                const searchTerm = currentFilters.menu.toLowerCase();
+                filtered = filtered.filter(order => 
+                    order.menu_name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Filter berdasarkan status pembayaran
+            if (currentFilters.payment_status) {
+                filtered = filtered.filter(order => 
+                    order.payment_status === currentFilters.payment_status
+                );
+            }
+            
+            return filtered;
+        }
+        
+        function resetFilters() {
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterCustomer').value = '';
+            document.getElementById('filterMenu').value = '';
+            document.getElementById('filterPaymentStatus').value = '';
+            
+            currentFilters = {};
+            
+            // Tampilkan semua data
+            if (allOrders.length > 0) {
+                updateStatistics(allOrders);
+                displayOrders(allOrders);
+                
+                const ordersEl = document.getElementById('ordersContainer');
+                const emptyEl = document.getElementById('emptyState');
+                
+                if (allOrders.length > 0) {
+                    ordersEl.style.display = 'block';
+                    emptyEl.style.display = 'none';
+                    showNotification(`Menampilkan semua ${allOrders.length} pesanan`, 'info');
+                } else {
+                    ordersEl.style.display = 'none';
+                    emptyEl.style.display = 'block';
+                }
+            } else {
+                loadOrders();
+            }
+        }
+        
+        // ============ FUNGSI STATISTIK ============
+        function updateStatistics(orders) {
+            if (!orders || orders.length === 0) {
+                resetStatistics();
+                return;
+            }
+            
+            // 1. Total Pesanan
+            const totalOrders = orders.length;
+            document.getElementById('totalOrders').textContent = totalOrders;
+            
+            // 2. Total Pendapatan (hanya yang sudah dibayar)
+            const paidOrders = orders.filter(order => order.payment_status === 'dibayar');
+            const totalRevenue = paidOrders.reduce((sum, order) => {
+                return sum + (parseFloat(order.total_amount) || 0);
+            }, 0);
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            
+            // 3. Hari Beroperasi (jumlah tanggal unik)
+            const uniqueDates = new Set();
+            orders.forEach(order => {
+                if (order.order_date) {
+                    const dateOnly = order.order_date.split('T')[0];
+                    uniqueDates.add(dateOnly);
+                }
+            });
+            document.getElementById('totalDays').textContent = uniqueDates.size;
+            
+            // 4. Transaksi Terakhir
+            if (orders.length > 0) {
+                // Urutkan dari yang terbaru
+                const sortedOrders = [...orders].sort((a, b) => 
+                    new Date(b.order_date) - new Date(a.order_date)
+                );
+                const lastOrder = sortedOrders[0];
+                document.getElementById('lastOrder').textContent = formatDate(lastOrder.order_date);
+            } else {
+                document.getElementById('lastOrder').textContent = '-';
+            }
+        }
+        
+        function resetStatistics() {
+            document.getElementById('totalOrders').textContent = '0';
+            document.getElementById('totalRevenue').textContent = 'Rp 0';
+            document.getElementById('totalDays').textContent = '0';
+            document.getElementById('lastOrder').textContent = '-';
+        }
+        
+        // ============ FUNGSI TAMPILKAN PESANAN ============
+        function displayOrders(orders) {
+            console.log('📊 Displaying', orders.length, 'orders');
+            
+            const container = document.getElementById('ordersContainer');
+            container.innerHTML = '';
+            
+            if (!orders || orders.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            // Urutkan dari yang terbaru
+            const sortedOrders = [...orders].sort((a, b) => 
+                new Date(b.order_date) - new Date(a.order_date)
+            );
+            
+            sortedOrders.forEach(order => {
+                const orderCard = document.createElement('div');
+                orderCard.className = 'order-card';
+                
+                // Tentukan warna border berdasarkan status pembayaran
+                const borderColor = order.payment_status === 'dibayar' ? '#28a745' : '#ffc107';
+                
+                orderCard.innerHTML = `
+                    <div class="order-header">
+                        <div>
+                            <h3>${order.order_number || `ORD${String(order.id).padStart(6, '0')}`}</h3>
+                            <div class="order-date">
+                                <i class="far fa-calendar"></i>
+                                ${formatDate(order.order_date)}
+                            </div>
+                        </div>
+                        <div class="order-status ${order.payment_status === 'dibayar' ? 'status-paid' : 'status-pending'}">
+                            ${order.payment_status === 'dibayar' ? 
+                                '<i class="fas fa-check-circle"></i> Dibayar' : 
+                                '<i class="fas fa-clock"></i> Belum'}
+                        </div>
+                    </div>
+                    
+                    <div class="customer-info">
+                        <div class="customer-row">
+                            <span class="customer-label">Pelanggan:</span>
+                            <span class="customer-value">${order.customer_name || 'Tidak ada nama'}</span>
+                        </div>
+                        
+                        <div class="customer-row">
+                            <span class="customer-label">Telepon:</span>
+                            <span class="customer-value">${order.customer_phone || '-'}</span>
+                        </div>
+                        
+                        <div class="customer-row">
+                            <span class="customer-label">Status Pembayaran:</span>
+                            <span class="customer-value">
+                                <span style="font-weight: 600; color: ${order.payment_status === 'dibayar' ? '#28a745' : '#ffc107'}">
+                                    ${order.payment_status === 'dibayar' ? '✅ Lunas' : '⏳ Belum Bayar'}
+                                </span>
+                            </span>
+                        </div>
+                        
+                        ${order.order_note ? `
+                        <div class="customer-row">
+                            <span class="customer-label">Catatan:</span>
+                            <span class="customer-value" style="font-style: italic;">${order.order_note}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="order-items">
+                        <div class="order-item">
+                            <div class="item-details">
+                                <div class="item-name">${order.menu_name || 'Menu tidak diketahui'}</div>
+                                <div class="item-meta">
+                                    ${formatCurrency(order.menu_price || 0)} × ${order.quantity || 1}
+                                </div>
+                            </div>
+                            <div class="item-total">${formatCurrency(order.total_amount || 0)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-total">
+                            <span>Total:</span>
+                            <span>${formatCurrency(order.total_amount || 0)}</span>
+                        </div>
+                        
+                        <div class="order-actions">
+                            <button class="btn btn-info btn-sm" onclick="showOrderDetails(${order.id})">
+                                <i class="fas fa-eye"></i> Detail
+                            </button>
+                            
+                            ${order.payment_status === 'belum' ? 
+                                `<button class="btn btn-success btn-sm" onclick="markAsPaid(${order.id})">
+                                    <i class="fas fa-check"></i> Tandai Dibayar
+                                </button>` : 
+                                `<button class="btn btn-warning btn-sm" onclick="markAsUnpaid(${order.id})">
+                                    <i class="fas fa-undo"></i> Tandai Belum
+                                </button>`
+                            }
+                            
+                            <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">
+                                <i class="fas fa-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Atur warna border kiri berdasarkan status pembayaran
+                orderCard.style.borderLeft = `4px solid ${borderColor}`;
+                
+                container.appendChild(orderCard);
+            });
+            
+            container.style.display = 'block';
+        }
+        
+        // ============ FUNGSI UPDATE STATUS PEMBAYARAN ============
+        async function updatePaymentStatus(orderId, status) {
+            try {
+                if (!['belum', 'dibayar'].includes(status)) {
+                    throw new Error('Status tidak valid');
+                }
+                
+                console.log(`🔄 Mengupdate status pembayaran order ${orderId} menjadi: ${status}`);
+                
+                // Update di data lokal terlebih dahulu
+                const orderIndex = allOrders.findIndex(o => o.id == orderId);
+                if (orderIndex !== -1) {
+                    allOrders[orderIndex].payment_status = status;
+                    
+                    // Update statistik
+                    updateStatistics(allOrders);
+                    
+                    // Terapkan filter ulang
+                    const filteredOrders = applyCurrentFilters(allOrders);
+                    displayOrders(filteredOrders);
+                    
+                    showNotification(`Status berhasil diubah: ${status === 'dibayar' ? 'Dibayar' : 'Belum Dibayar'}`, 'success');
+                }
+                
+                // Kirim ke API
+                try {
+                    const response = await fetch(`/api/orders/${orderId}/payment`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ status: status })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (!result.success) {
+                            console.warn('API returned error:', result.message);
+                        }
+                    }
+                } catch (apiError) {
+                    console.warn('Failed to update API:', apiError);
+                    showNotification('Perubahan disimpan secara lokal', 'info');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error updating payment status:', error);
+                showNotification('Gagal mengubah status pembayaran', 'error');
+            }
+        }
+        
+        async function markAsPaid(orderId) {
+            if (confirm('Tandai transaksi ini sebagai sudah dibayar?')) {
+                await updatePaymentStatus(orderId, 'dibayar');
+            }
+        }
+        
+        async function markAsUnpaid(orderId) {
+            if (confirm('Tandai transaksi ini sebagai belum dibayar?')) {
+                await updatePaymentStatus(orderId, 'belum');
+            }
+        }
+        
+        // ============ FUNGSI LAINNYA ============
+        async function showOrderDetails(orderId) {
+            try {
+                // Cari order dari data lokal
+                const order = allOrders.find(o => o.id == orderId);
+                if (!order) {
+                    showNotification('Pesanan tidak ditemukan', 'error');
+                    return;
+                }
+                
+                // Create modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 2000;
+                    padding: 20px;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #8B4513; padding-bottom: 15px;">
+                            <h2 style="margin: 0; color: #8B4513;">
+                                <i class="fas fa-receipt"></i> Detail Pesanan
+                            </h2>
+                            <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">
+                                &times;
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="margin: 0 0 10px 0; color: #2c3e50;">${order.order_number || `ORD${String(order.id).padStart(6, '0')}`}</h3>
+                                <p style="margin: 0; color: #6c757d;">
+                                    <i class="far fa-calendar"></i> ${formatDate(order.order_date)}
+                                </p>
+                            </div>
+                            
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #495057; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-user"></i> Informasi Pelanggan
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                                    <p style="margin: 0 0 10px 0;"><strong>Nama:</strong> ${order.customer_name || 'Tidak ada nama'}</p>
+                                    ${order.customer_phone ? `<p style="margin: 0 0 10px 0;"><strong>Telepon:</strong> ${order.customer_phone}</p>` : ''}
+                                    ${order.customer_email ? `<p style="margin: 0;"><strong>Email:</strong> ${order.customer_email}</p>` : ''}
+                                    <p style="margin: 10px 0 0 0;"><strong>Status Pembayaran:</strong> 
+                                        <span style="color: ${order.payment_status === 'dibayar' ? '#28a745' : '#ffc107'}; font-weight: 600;">
+                                            ${order.payment_status === 'dibayar' ? '✅ Lunas' : '⏳ Belum Bayar'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #495057; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-utensils"></i> Detail Menu
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; display: flex; gap: 15px; align-items: center;">
+                                    ${order.gambar ? `
+                                    <div style="width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0;">
+                                        <img src="${order.gambar}" alt="${order.menu_name}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    </div>
+                                    ` : ''}
+                                    <div style="flex: 1;">
+                                        <h5 style="margin: 0 0 5px 0; color: #2c3e50;">${order.menu_name || 'Menu tidak diketahui'}</h5>
+                                        <p style="margin: 0; color: #6c757d; font-size: 0.9em;">${order.deskripsi || 'Tanpa deskripsi'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #495057; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-calculator"></i> Rincian Harga
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span>Harga Satuan</span>
+                                        <span>${formatCurrency(order.menu_price || 0)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span>Jumlah</span>
+                                        <span>${order.quantity || 1}</span>
+                                    </div>
+                                    <hr style="margin: 15px 0; border-color: #dee2e6;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1em;">
+                                        <span>Total</span>
+                                        <span>${formatCurrency(order.total_amount || 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${order.order_note ? `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="color: #495057; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-sticky-note"></i> Catatan
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                                    <p style="margin: 0; font-style: italic;">${order.order_note}</p>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div style="display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                            <button onclick="deleteOrder(${order.id}); this.closest('[style*=\"position: fixed\"]').remove()" class="btn btn-danger" style="flex: 1;">
+                                <i class="fas fa-trash"></i> Hapus Transaksi
+                            </button>
+                            <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" class="btn btn-secondary" style="flex: 1;">
+                                <i class="fas fa-times"></i> Tutup
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Error showing order details:', error);
+                showNotification('Gagal memuat detail pesanan', 'error');
+            }
+        }
+        
+        async function deleteOrder(orderId) {
+            if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+                return;
+            }
+            
+            try {
+                // Hapus dari data lokal terlebih dahulu
+                allOrders = allOrders.filter(order => order.id != orderId);
+                
+                // Update statistik
+                updateStatistics(allOrders);
+                
+                // Terapkan filter ulang
+                const filteredOrders = applyCurrentFilters(allOrders);
+                displayOrders(filteredOrders);
+                
+                showNotification('Transaksi berhasil dihapus', 'success');
+                
+                // Kirim ke API
+                try {
+                    const response = await fetch(`/api/orders/${orderId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (!result.success) {
+                            console.warn('API returned error:', result.message);
+                        }
+                    }
+                } catch (apiError) {
+                    console.warn('Failed to delete from API:', apiError);
+                    showNotification('Transaksi dihapus secara lokal', 'info');
+                }
+                
+            } catch (error) {
+                console.error('Error deleting order:', error);
+                showNotification('Gagal menghapus transaksi', 'error');
+            }
+        }
+        
+        // ============ FUNGSI EXPORT DATA ============
+        function exportToExcel() {
+            try {
+                const dataToExport = applyCurrentFilters(allOrders);
+                
+                if (dataToExport.length === 0) {
+                    showNotification('Tidak ada data untuk diexport', 'warning');
+                    return;
+                }
+                
+                // Create CSV content
+                let csvContent = "No.,Nomor Pesanan,Tanggal,Pelanggan,Telepon,Menu,Jumlah,Harga Satuan,Total,Status Pembayaran,Catatan\n";
+                
+                dataToExport.forEach((order, index) => {
+                    const row = [
+                        index + 1,
+                        order.order_number || `ORD${String(order.id).padStart(6, '0')}`,
+                        formatDate(order.order_date),
+                        `"${order.customer_name || ''}"`,
+                        order.customer_phone || '',
+                        `"${order.menu_name || ''}"`,
+                        order.quantity || 1,
+                        order.menu_price || 0,
+                        order.total_amount || 0,
+                        order.payment_status === 'dibayar' ? 'Dibayar' : 'Belum',
+                        `"${order.order_note || ''}"`
+                    ];
+                    
+                    csvContent += row.join(',') + '\n';
+                });
+                
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `laporan-pesanan-${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showNotification(`Berhasil export ${dataToExport.length} data ke CSV`, 'success');
+                
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                showNotification('Gagal export data', 'error');
+            }
+        }
+        
+        // ============ DATA MOCK UNTUK TESTING ============
+        async function loadMockData() {
+            console.log('🔄 Loading mock data for testing...');
+            
+            // Generate mock orders
+            const mockOrders = generateMockOrders(15);
+            allOrders = mockOrders;
+            
+            // Update statistics
+            updateStatistics(allOrders);
+            
+            // Display orders
+            const filteredOrders = applyCurrentFilters(allOrders);
+            displayOrders(filteredOrders);
+            
+            // Update UI
+            const loadingEl = document.getElementById('loadingState');
+            const ordersEl = document.getElementById('ordersContainer');
+            const emptyEl = document.getElementById('emptyState');
+            
+            loadingEl.style.display = 'none';
+            
+            if (filteredOrders.length > 0) {
+                ordersEl.style.display = 'block';
+                emptyEl.style.display = 'none';
+            } else {
+                ordersEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+            }
+            
+            showNotification('Data mock berhasil dimuat', 'info');
+        }
+        
+        function generateMockOrders(count) {
+            const menus = [
+                { name: 'Kopi Arabika', price: 25000, image: '/assets/arabika.jpg' },
+                { name: 'Kopi Robusta', price: 20000, image: '/assets/robusta.jpg' },
+                { name: 'Cappuccino', price: 30000, image: '/assets/cappuccino.jpg' },
+                { name: 'Latte', price: 35000, image: '/assets/latte.jpg' },
+                { name: 'Espresso', price: 22000, image: '/assets/espresso.jpg' },
+                { name: 'Mocha', price: 32000, image: '/assets/mocha.jpg' }
+            ];
+            
+            const customers = [
+                { name: 'Budi Santoso', phone: '08123456789' },
+                { name: 'Siti Rahayu', phone: '08234567890' },
+                { name: 'Ahmad Fauzi', phone: '08345678901' },
+                { name: 'Dewi Lestari', phone: '08456789012' },
+                { name: 'Rudi Hartono', phone: '08567890123' },
+                { name: 'Maya Sari', phone: '08678901234' }
+            ];
+            
+            const orders = [];
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7); // Data dari 7 hari terakhir
+            
+            for (let i = 1; i <= count; i++) {
+                const menu = menus[Math.floor(Math.random() * menus.length)];
+                const customer = customers[Math.floor(Math.random() * customers.length)];
+                const quantity = Math.floor(Math.random() * 3) + 1;
+                const totalAmount = menu.price * quantity;
+                
+                // Random date within last 7 days
+                const randomDay = Math.floor(Math.random() * 7);
+                const orderDate = new Date(startDate);
+                orderDate.setDate(orderDate.getDate() + randomDay);
+                orderDate.setHours(Math.floor(Math.random() * 12) + 8, Math.floor(Math.random() * 60));
+                
+                // Random payment status (70% paid, 30% unpaid)
+                const paymentStatus = Math.random() > 0.3 ? 'dibayar' : 'belum';
+                
+                // Random note (30% chance)
+                const notes = [
+                    'Tambah gula',
+                    'Kurangi susu',
+                    'Extra panas',
+                    'Bungkus',
+                    'Ditempat',
+                    ''
+                ];
+                const orderNote = Math.random() > 0.7 ? notes[Math.floor(Math.random() * notes.length)] : '';
+                
+                orders.push({
+                    id: i,
+                    order_number: `ORD${String(i).padStart(6, '0')}`,
+                    order_date: orderDate.toISOString(),
+                    customer_name: customer.name,
+                    customer_phone: customer.phone,
+                    payment_status: paymentStatus,
+                    menu_name: menu.name,
+                    menu_price: menu.price,
+                    quantity: quantity,
+                    total_amount: totalAmount,
+                    gambar: menu.image,
+                    deskripsi: 'Kopi pilihan terbaik dari perkebunan lokal',
+                    order_note: orderNote
+                });
+            }
+            
+            // Sort by date (newest first)
+            return orders.sort((a, b) => new Date(b.order_date) - new Date(a.order_date));
         }
     </script>
 </body>

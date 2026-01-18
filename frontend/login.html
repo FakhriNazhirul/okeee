@@ -6,7 +6,7 @@
     <title>Login Admin - Kopi Nusantara</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/admin.css">
-    <link rel="stylesheet" href="/css/login.css"> <!-- Tambahkan ini -->
+    <link rel="stylesheet" href="/css/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="login-page">
@@ -83,8 +83,50 @@
     <!-- JavaScript Files -->
     <script src="/js/auth.js"></script>
     <script>
+        // Fungsi untuk mengecek jika sudah login
+        function checkIfAlreadyLoggedIn() {
+            const authData = localStorage.getItem('auth') || sessionStorage.getItem('auth');
+            
+            if (!authData) {
+                return false;
+            }
+            
+            try {
+                const auth = JSON.parse(authData);
+                
+                if (auth.isLoggedIn && auth.role === 'admin') {
+                    // Cek expiry time (1 jam)
+                    if (auth.loginTime) {
+                        const loginTime = new Date(auth.loginTime);
+                        const currentTime = new Date();
+                        const timeDiff = (currentTime - loginTime) / (1000 * 60 * 60); // dalam jam
+                        
+                        if (timeDiff < 1) { // Session masih valid (kurang dari 1 jam)
+                            return true;
+                        } else {
+                            // Session expired, hapus data
+                            localStorage.removeItem('auth');
+                            sessionStorage.removeItem('auth');
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error checking login status:', error);
+            }
+            
+            return false;
+        }
+        
         // Inisialisasi saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
+            // Redirect jika sudah login
+            if (checkIfAlreadyLoggedIn()) {
+                window.location.href = '/admin/dashboard.html';
+                return;
+            }
+            
             // Toggle password visibility
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('password');
@@ -106,7 +148,7 @@
                 loginForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     
-                    const username = document.getElementById('username').value;
+                    const username = document.getElementById('username').value.trim();
                     const password = document.getElementById('password').value;
                     const rememberMe = document.getElementById('remember').checked;
                     
@@ -139,7 +181,7 @@
                             storage.setItem('auth', JSON.stringify(sessionData));
                             
                             // Redirect ke dashboard
-                            window.location.href = '/admin/dashboard';
+                            window.location.href = '/admin/dashboard.html';
                         } else {
                             showError('Username atau password salah');
                             setLoading(false);
@@ -158,24 +200,6 @@
                         alert(`Link reset password telah dikirim ke email terdaftar untuk username: ${username}\n\nIni hanya simulasi.`);
                     }
                 });
-            }
-            
-            // Cek jika sudah login
-            function checkIfLoggedIn() {
-                const authData = localStorage.getItem('auth') || sessionStorage.getItem('auth');
-                if (!authData) return false;
-                
-                try {
-                    const auth = JSON.parse(authData);
-                    return auth.isLoggedIn && auth.role === 'admin';
-                } catch {
-                    return false;
-                }
-            }
-            
-            // Redirect jika sudah login
-            if (checkIfLoggedIn()) {
-                window.location.href = '/admin/dashboard';
             }
         });
         

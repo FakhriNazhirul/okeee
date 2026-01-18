@@ -2,7 +2,7 @@
  * api.js - Modul Pusat Komunikasi API
  * Menghubungkan ke server backend di port 5000
  */
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'http://localhost:3000/api';
 
 async function apiRequest(endpoint, options = {}) {
     // Menggunakan 'access_token' agar konsisten dengan auth.js
